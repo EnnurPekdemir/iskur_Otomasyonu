@@ -103,11 +103,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "İŞKUR Otomasyonu API v1");
-        c.RoutePrefix = string.Empty; // Swagger doğrudan ana sayfada ('/') açılsın
+        c.RoutePrefix = "swagger"; // Swagger /swagger adresinde açılsın
     });
 }
 
 app.UseHttpsRedirection();
+
+// 8. Statik Dosyalar (SPA Dashboard UI)
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.UseCors("AllowAll");
 
@@ -115,5 +119,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapFallbackToFile("index.html");
 
 app.Run();
