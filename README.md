@@ -109,3 +109,20 @@ Bu proje, **Teknoloji Fakültesi İŞKUR Öğrenci Otomasyonu** sistemi için mo
 | **Task** | `PUT` | `/api/task/{id}/status` | Ogrenci | Görev durumunu güncelleme ve teslim notu |
 | **Task** | `POST` | `/api/task/{id}/evaluate` | Danisman, BolumBaskani, Dekanlik | Göreve danışman değerlendirme notu ve puanı |
 | **Task** | `GET` | `/api/task/student/{studentId}` | Authorize | Öğrencinin görev listesi |
+| **Report** | `GET` | `/api/reports/monthly-summary` | Dekanlik, BolumBaskani | Filtrelenebilir ay sonu puantaj verisi (JSON) |
+| **Report** | `GET` | `/api/reports/monthly-summary/export-excel` | Dekanlik, BolumBaskani | Resmi fakülte formatında biçimlendirilmiş .xlsx çıktısı |
+| **Report** | `GET` | `/api/reports/monthly-summary/export-csv` | Dekanlik, BolumBaskani | UTF-8 BOM'lu CSV formatında dışa aktarım |
+| **Report** | `GET` | `/api/reports/risk-warnings` | Dekanlik, BolumBaskani | İzin ve devamsızlık riski taşıyan öğrenci listesi |
+| **Report** | `GET` | `/api/reports/risk-warnings/export-excel` | Dekanlik, BolumBaskani | Renk kodlu risk değerlendirme Excel raporu |
+
+---
+
+### 📊 3. Aşama: Raporlama ve Dışa Aktarma Motoru (ClosedXML)
+- **Yetki Kapsamı**: Bölüm Başkanı yalnızca kendi bölümünün puantaj ve risk verisini sorgulayabilir; Dekanlık tüm fakülteyi filtreleyebilir.
+- **KVKK Çözümlemesi**: Ay sonu puantaj raporunda öğrencinin TCKN ve IBAN'ı şifreli alanlardan çözülerek resmi muhasebe/dekont formatında aktarılır.
+- **ClosedXML Rapor Tasarımı**:
+  - Kurumsal başlık (Fakülte Laciverti `#1B365D`, beyaz yazı, ortalı başlıklar).
+  - TCKN ve IBAN hücreleri metin (`@`) biçiminde (baştaki sıfırlar korunur).
+  - Saat kolonları `# ,##0.00` formatında, dip toplamda `SUM` formülü.
+  - Alternatif satır renklendirmesi (`#F8F9FA`) ve otomatik sütun genişlikleri.
+

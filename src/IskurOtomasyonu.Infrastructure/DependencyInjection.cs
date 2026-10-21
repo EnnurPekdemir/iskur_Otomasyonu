@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using IskurOtomasyonu.Application.Common.Interfaces;
+using IskurOtomasyonu.Application.Interfaces.Services;
 using IskurOtomasyonu.Domain.Entities.Identity;
 using IskurOtomasyonu.Infrastructure.Data;
 using IskurOtomasyonu.Infrastructure.Security;
@@ -61,10 +62,11 @@ public static class DependencyInjection
         .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddDefaultTokenProviders();
 
-        // 4. HttpContextAccessor, CurrentUserService ve JwtTokenGenerator Kaydı
+        // 4. HttpContextAccessor, CurrentUserService, JwtTokenGenerator ve ExportService Kaydı
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, Services.CurrentUserService>();
         services.AddScoped<IJwtTokenGenerator, Security.JwtTokenGenerator>();
+        services.AddScoped<IExportService, Services.ExportService>();
 
         return services;
     }
