@@ -692,38 +692,19 @@ class StudentDashboard {
     // 2. Devam Takibi ve QR Okutma (Check-in)
     // ==========================================
     openQrScanner() {
-        Modal.open('qr-scanner-modal');
-        const qrReaderDiv = document.getElementById('qr-reader');
-        if (!qrReaderDiv) return;
-
-        qrReaderDiv.innerHTML = '';
-
-        if (typeof Html5Qrcode !== 'undefined') {
-            this.html5QrCode = new Html5Qrcode('qr-reader');
-            this.html5QrCode.start(
-                { facingMode: 'environment' },
-                { fps: 10, qrbox: { width: 250, height: 250 } },
-                async (decodedText) => {
-                    await this.handleQrScanned(decodedText);
-                },
-                (errorMessage) => {
-                    // Tarama esnasındaki anlık okunamama durumları
-                }
-            ).catch(err => {
-                console.warn('Kamera açılamadı:', err);
-                document.getElementById('qr-camera-error').classList.remove('hidden');
-            });
+        if (window.qrScanner) {
+            window.qrScanner.open();
+        } else {
+            Modal.open('qr-scanner-modal');
         }
     }
 
     closeQrScanner() {
-        if (this.html5QrCode) {
-            this.html5QrCode.stop().then(() => {
-                this.html5QrCode.clear();
-                this.html5QrCode = null;
-            }).catch(e => console.warn(e));
+        if (window.qrScanner) {
+            window.qrScanner.close();
+        } else {
+            Modal.close('qr-scanner-modal');
         }
-        Modal.close('qr-scanner-modal');
     }
 
     async handleQrScanned(tokenHash) {
