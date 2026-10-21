@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using IskurOtomasyonu.Application.Common.Interfaces;
 
 namespace IskurOtomasyonu.Infrastructure.Security;
 

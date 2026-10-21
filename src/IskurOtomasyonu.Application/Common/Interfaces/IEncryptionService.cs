@@ -1,4 +1,4 @@
-namespace IskurOtomasyonu.Infrastructure.Security;
+namespace IskurOtomasyonu.Application.Common.Interfaces;
 
 /// <summary>
 /// KVKK gereği hassas verilerin (TCKN, IBAN vb.) şifrelenmesi ve çözülmesi için servis arayüzü.
@@ -16,7 +16,7 @@ public interface IEncryptionService
     string Decrypt(string cipherText);
 
     /// <summary>
-    /// Arama ve tekil indeksleme için deterministik/tuzlu hash üretir (SHA-256).
+    /// Arama ve tekil indeksleme için deterministik hash üretir (SHA-256).
     /// </summary>
     string ComputeHash(string input);
 }

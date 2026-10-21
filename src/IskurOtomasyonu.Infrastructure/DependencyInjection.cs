@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using IskurOtomasyonu.Application.Common.Interfaces;
 using IskurOtomasyonu.Domain.Entities.Identity;
 using IskurOtomasyonu.Infrastructure.Data;
 using IskurOtomasyonu.Infrastructure.Security;
@@ -36,6 +37,9 @@ public static class DependencyInjection
             });
         });
 
+        // 3. IApplicationDbContext Arayüz Bağlantısı
+        services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
+
         // 3. ASP.NET Core Identity Yapılandırması
         services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
         {
@@ -56,6 +60,11 @@ public static class DependencyInjection
         })
         .AddEntityFrameworkStores<ApplicationDbContext>()
         .AddDefaultTokenProviders();
+
+        // 4. HttpContextAccessor, CurrentUserService ve JwtTokenGenerator Kaydı
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, Services.CurrentUserService>();
+        services.AddScoped<IJwtTokenGenerator, Security.JwtTokenGenerator>();
 
         return services;
     }

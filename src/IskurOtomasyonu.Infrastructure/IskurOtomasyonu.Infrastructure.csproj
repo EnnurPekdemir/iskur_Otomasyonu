@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\IskurOtomasyonu.Domain\IskurOtomasyonu.Domain.csproj" />
+    <ProjectReference Include="..\IskurOtomasyonu.Application\IskurOtomasyonu.Application.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

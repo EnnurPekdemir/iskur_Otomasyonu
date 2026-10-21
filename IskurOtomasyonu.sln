@@ -9,6 +9,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IskurOtomasyonu.Domain", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IskurOtomasyonu.Infrastructure", "src\IskurOtomasyonu.Infrastructure\IskurOtomasyonu.Infrastructure.csproj", "{FD0F9CD3-4B7E-441A-87BF-3128CC8989CE}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IskurOtomasyonu.Application", "src\IskurOtomasyonu.Application\IskurOtomasyonu.Application.csproj", "{F8ADC10B-B22A-486D-B70D-3896DA80443E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IskurOtomasyonu.WebApi", "src\IskurOtomasyonu.WebApi\IskurOtomasyonu.WebApi.csproj", "{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -43,6 +47,30 @@ Global
 		{FD0F9CD3-4B7E-441A-87BF-3128CC8989CE}.Release|x64.Build.0 = Release|Any CPU
 		{FD0F9CD3-4B7E-441A-87BF-3128CC8989CE}.Release|x86.ActiveCfg = Release|Any CPU
 		{FD0F9CD3-4B7E-441A-87BF-3128CC8989CE}.Release|x86.Build.0 = Release|Any CPU
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E}.Debug|x64.Build.0 = Debug|Any CPU
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E}.Debug|x86.Build.0 = Debug|Any CPU
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E}.Release|x64.ActiveCfg = Release|Any CPU
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E}.Release|x64.Build.0 = Release|Any CPU
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E}.Release|x86.ActiveCfg = Release|Any CPU
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E}.Release|x86.Build.0 = Release|Any CPU
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}.Debug|x64.Build.0 = Debug|Any CPU
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}.Debug|x86.Build.0 = Debug|Any CPU
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}.Release|x64.ActiveCfg = Release|Any CPU
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}.Release|x64.Build.0 = Release|Any CPU
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}.Release|x86.ActiveCfg = Release|Any CPU
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -50,5 +78,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{F1841F3C-4FC6-4697-A649-E1288C5FC138} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{FD0F9CD3-4B7E-441A-87BF-3128CC8989CE} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{F8ADC10B-B22A-486D-B70D-3896DA80443E} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{DC9C1F7C-6B77-4AE8-A740-0641B17393DD} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

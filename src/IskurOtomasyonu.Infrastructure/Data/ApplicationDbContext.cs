@@ -2,6 +2,7 @@ using System.Reflection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using IskurOtomasyonu.Application.Common.Interfaces;
 using IskurOtomasyonu.Domain.Common;
 using IskurOtomasyonu.Domain.Entities.Academic;
 using IskurOtomasyonu.Domain.Entities.Assignments;
@@ -26,7 +27,7 @@ public class ApplicationDbContext : IdentityDbContext<
     IdentityUserRole<Guid>,
     IdentityUserLogin<Guid>,
     IdentityRoleClaim<Guid>,
-    IdentityUserToken<Guid>>
+    IdentityUserToken<Guid>>, IApplicationDbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
     {

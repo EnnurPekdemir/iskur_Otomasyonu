@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using IskurOtomasyonu.Application.Common.Interfaces;
 
 namespace IskurOtomasyonu.Infrastructure.Security;
 

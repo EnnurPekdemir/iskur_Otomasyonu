@@ -1,17 +1,17 @@
-# Teknoloji Fakültesi İŞKUR Öğrenci Otomasyonu - Backend & Veritabanı Mimarisi
+# Teknoloji Fakültesi İŞKUR Öğrenci Otomasyonu - Backend & API Mimarisi
 
-Bu proje, **Teknoloji Fakültesi İŞKUR Öğrenci Otomasyonu** sistemi için modern, kurumsal standartlara ve **KVKK** güvenlik gereksinimlerine uygun olarak tasarlanmış **Entity Framework Core (Code-First)** ilişkisel veri mimarisidir.
+Bu proje, **Teknoloji Fakültesi İŞKUR Öğrenci Otomasyonu** sistemi için modern, kurumsal standartlara ve **KVKK** güvenlik gereksinimlerine uygun olarak tasarlanmış **ASP.NET Core 9 Web API** ve **Entity Framework Core (Code-First)** ilişkisel veri ve servis mimarisidir.
 
 ---
 
-## 🏛️ Mimari Katmanlar ve Proje Yapısı
+## 🏛️ Mimari Katmanlar ve Proje Yapısı (Clean Architecture)
 
 ```
 İşkur_Otomasyonu/
 ├── src/
-│   ├── IskurOtomasyonu.Domain/           # Çekirdek Domain Katmanı (İş kuralları & Entity'ler)
+│   ├── IskurOtomasyonu.Domain/           # 1. Çekirdek Domain Katmanı
 │   │   ├── Common/                       # BaseEntity, ISoftDeletable, IAuditableEntity
-│   │   ├── Enums/                        # UserRoleType, Statuses, LeaveTypes vb.
+│   │   ├── Enums/                        # UserRoleType, Statuses, LeaveTypes, Shifts
 │   │   └── Entities/
 │   │       ├── Academic/                 # Student, Department, Unit
 │   │       ├── Assignments/              # StudentAdvisorAssignment, StudentUnitAssignment (Tarihçe/Snapshot)
@@ -20,59 +20,92 @@ Bu proje, **Teknoloji Fakültesi İŞKUR Öğrenci Otomasyonu** sistemi için mo
 │   │       ├── Tracking/                 # MonthlyPlan, PlanDay, QrSession, Attendance
 │   │       └── Workflow/                 # LeaveRequest, StudentTask
 │   │
-│   └── IskurOtomasyonu.Infrastructure/   # Veri ve Güvenlik Altyapısı
-│       ├── Data/
-│       │   ├── ApplicationDbContext.cs   # Ana EF Core DbContext (IdentityDbContext<Guid>)
-│       │   ├── ApplicationDbContextFactory.cs # EF CLI Migration Fabrikası
-│       │   └── Configurations/           # IEntityTypeConfiguration sınıfları (Fluent API)
-│       ├── Security/                     # KVKK AES-256 Şifreleme & EF Core ValueConverter
-│       └── Migrations/                   # Başarıyla test edilmiş ilk EF Core Migration
+│   ├── IskurOtomasyonu.Application/      # 2. Uygulama & İş Mantığı Katmanı
+│   │   ├── Common/                       # IApplicationDbContext, ICurrentUserService, ApiResponse, Exceptions
+│   │   ├── DTOs/                         # Auth, Plan, Attendance, Leave, Task DTO'ları
+│   │   ├── Interfaces/Services/          # IAuthService, IPlanService, IAttendanceService, ILeaveService, ITaskService
+│   │   └── Services/                     # İş kuralları, validasyonlar ve servis implementasyonları
+│   │
+│   ├── IskurOtomasyonu.Infrastructure/   # 3. Veri, Güvenlik ve Altyapı Katmanı
+│   │   ├── Data/                         # ApplicationDbContext, DbContextFactory, Fluent API Configurations
+│   │   ├── Security/                     # AES-256 Şifreleme, ValueConverter, JwtTokenGenerator
+│   │   ├── Services/                     # CurrentUserService (IHttpContextAccessor)
+│   │   └── Migrations/                   # EF Core Code-First Migration Dosyaları
+│   │
+│   └── IskurOtomasyonu.WebApi/           # 4. REST API Sunum Katmanı
+│       ├── Controllers/                  # Auth, Plan, Attendance, Leave, Task Controller'ları
+│       ├── Middleware/                   # GlobalExceptionHandlerMiddleware
+│       ├── appsettings.json              # JWT ve MSSQL Yapılandırması
+│       └── Program.cs                    # Pipeline, CORS, Swagger ve Bağımlılık Enjeksiyonu
 └── IskurOtomasyonu.sln
 ```
 
 ---
 
-## 🔑 Temel İş Kuralları ve Çözüm Yaklaşımları
+## 🔑 Modüller ve İş Mantığı Kuralları
 
-### 1. Rol ve Kullanıcı Yapısı (ASP.NET Core Identity)
-- `IdentityUser<Guid>` genişletilerek `ApplicationUser` oluşturulmuştur.
-- 4 temel rol tanımlanmış ve sisteme tohumlanmıştır (Seeded):
-  - **Dekanlik**: Fakülte genel yönetimi ve onay mercii.
-  - **BolumBaskani**: Akademik bölüm yönetimi ve koordinasyon.
-  - **Danisman**: Öğrencinin birebir akademik/İŞKUR sorumlusu.
-  - **Ogrenci**: İŞKUR programında yer alan bursiyer öğrenci.
+### 1. Güvenlik, Kimlik Doğrulama & KVKK (Auth & Security)
+- **JWT Bearer Auth**: `Login`, `RegisterStudent`, `RefreshToken` uç noktaları. Rol claim'leri ve 120 dakikalık erişim süresi.
+- **KVKK AES-256 Şifreleme**: Öğrenci TCKN ve IBAN verileri veritabanında asla düz metin tutulmaz.
+- **Blind Indexing**: Arama ve tekil indeksleme için deterministik SHA-256 özeti tutan `TcNoHash` kolonu kullanılır.
+- **Rol Yetkilendirme**: `Dekanlik`, `BolumBaskani`, `Danisman`, `Ogrenci` rolleri üzerinden `[Authorize(Roles = ...)]` filtreleri.
 
-### 2. KVKK ve Hassas Veri Güvenliği
-- **Şifreli Saklama**: Öğrencilerin TC Kimlik No ve IBAN alanları veritabanında asla düz metin (plain text) olarak saklanmaz. `EncryptedTcNo` ve `EncryptedIban` olarak AES-256 ile şifrelenir.
-- **Şifreli Arama / Tekillik (Blind Indexing)**: TCKN için deterministik SHA-256 özeti tutan `TcNoHash` kolonu tanımlanmış ve üzerinde **Unique Index** oluşturulmuştur. Bu sayede veritabanındaki tüm satırların şifresini çözmeye gerek kalmadan O(1) maliyetle tekil arama yapılabilir.
+### 2. Çalışma Planı Motoru (PlanService)
+- **Haftalık 1-3 Gün Kuralı**: Öğrenci aynı takvim haftası içine 4. bir çalışma günü ekleyemez (`ValidationException`).
+- **Resmî Tatil & Hafta Sonu Koruması**: Hafta sonu günleri veya Türkiye resmî tatil günleri (Yılbaşı, 23 Nisan, 1 Mayıs, 19 Mayıs, 15 Temmuz, 30 Ağustos, 29 Ekim) çalışma günü olarak seçilemez.
+- **Vardiya Seçenekleri**:
+  - `Morning`: 09:00 - 13:00 (4 Saat)
+  - `Afternoon`: 13:00 - 17:00 (4 Saat)
+  - `Full`: 09:00 - 14:00 (5 Saat - İŞKUR Günlük Max Kuralı)
+- **Durum Akışı**: `Draft` (Taslak) ➔ `Submitted` (Danışman Onayında) ➔ `Approved` / `Rejected` (Onaylandı / Reddedildi).
 
-### 3. Geçmişin Korunması ve Snapshot Mantığı
-- **Danışman ve Birim Değişiklikleri**: Öğrencinin danışman ya da birim değişikliklerinde öğrenci tablosundaki veriler ezilmez.
-  - `StudentAdvisorAssignment`: Öğrencinin geçmişten günümüze danışman atama tarihçesi (`StartDate`, `EndDate`, `IsActive`).
-  - `StudentUnitAssignment`: Öğrencinin geçmişten günümüze birim görevlendirme tarihçesi (`StartDate`, `EndDate`, `IsActive`).
-- **Aylık Çalışma Planı Bağımsızlığı**: Her ayın çalışma planı (`MonthlyPlan` -> `PlanDay`), fiili devam kayıtları (`Attendance`) ve izinler (`LeaveRequest`) bağımsız tutulur; geçmiş ayların verileri kesinlikle üzerine yazılmaz.
+### 3. Dinamik Karekod ve Devam Takip Motoru (AttendanceService)
+- **30 Saniyelik Dinamik QR**: Yetkili (Danışman/Sekreterlik) ekranında her 30 saniyede bir kriptografik hash'e (`TokenHash`) sahip tek kullanımlık QR oturumu üretilir.
+- **Check-in Doğrulama Kuralları**:
+  1. *QR Süresi*: 30 saniyeyi aşmış karekodlar anında reddedilir.
+  2. *Plan Uyumu*: Öğrencinin o gün için onaylanmış bir çalışma planı (`MonthlyPlanStatus.Approved`) yoksa devam alınamaz.
+  3. *Mükerrerlik*: Aynı planlanan gün için mükerrer giriş engellenir (`Unique Index`).
+  4. *Otomatik Tamamlama*: Başarılı check-in ile devam kaydı oluşur ve ilgili günün durumu `Completed` yapılır.
+- **Check-out**: Öğrencinin çıkış saati ve net çalıştığı süre kaydedilir.
 
-### 4. Global Mantıksal Silme (Soft-Delete) ve Denetim İzi (Audit)
-- Tüm varlıklar `BaseEntity` sınıfından türer: `Id`, `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`, `IsDeleted`, `DeletedAt`, `DeletedBy`.
-- `ApplicationDbContext.OnModelCreating` içerisinde `ISoftDeletable` arayüzünü uygulayan tüm varlıklara otomatik olarak `HasQueryFilter(e => !e.IsDeleted)` uygulanır.
-- `SaveChangesAsync` override edilerek silinen kayıtlar fiziksel olarak silinmek yerine otomatik olarak `IsDeleted = true` yapılır; ekleme ve güncelleme zamanları UTC olarak damgalanır.
+### 4. İzin Yönetimi ve Bakiye Takip (LeaveService)
+- **Parametrik İzin Sınırı**: Sistem ayarlarından (`MAX_ANNUAL_LEAVE_DAYS = "10"`) okunur.
+- **Bakiye Hesaplama**: `Kalan Hak = Toplam Hak - Onaylanan İzin Günleri`.
+- **Uyarı Bayrağı (`HasLeaveWarning`)**: Kalan gün sayısı 2 veya daha az olduğunda sistem arayüzü ve yanıtlarında otomatik uyarı bayrağı tetiklenir.
+- **Kota Denetimi**: Kalan izinden fazla izin talep edilmesi engellenir.
 
-### 5. 30 Saniyelik Dinamik Karekod (QR) ve Devam Takibi
-- `QrSession`: Danışman/Birim yetkilisi tarafından başlatılan, 30 saniyelik geçerlilik süresine sahip dinamik karekod oturumlarını tutar (`TokenHash`, `ExpiresAt`, `IsActive`).
-- `Attendance`: Öğrencinin tarama sonucu planlanan güne ait fiili devam kaydıdır (`StudentId`, `PlanDayId`, `CheckInTime`, `CheckOutTime`, `ActualHoursWorked`, `VerificationStatus`, `DeviceSignature`, `IpAddress`).
-- Öğrencinin aynı gün için mükerrer devam kaydı açmasını engellemek üzere `(StudentId, PlanDayId)` üzerinde **Composite Unique Index** uygulanmıştır.
+### 5. Görev ve Değerlendirme (TaskService)
+- Danışmanlar öğrencilere hedef teslim tarihi (`DueDate`) belirterek görev atayabilir.
+- Öğrenci görev durumunu güncelleyebilir (`InProgress`, `Completed`) ve teslim notu ekleyebilir.
+- Danışman değerlendirme notu ve puanı (0-100) girebilir; tüm süreç tarihçeli olarak saklanır.
 
-### 6. Parametrik İzin ve Sistem Ayarları
-- `SystemSetting`: Dinamik parametreleri (`Key`, `Value`, `Description`, `Group`) tutar.
-  - `MAX_ANNUAL_LEAVE_DAYS = "10"`
-  - `QR_EXPIRATION_SECONDS = "30"`
-  - `DAILY_MAX_WORKING_HOURS = "5"`
-  - `MONTHLY_MAX_WORKING_HOURS = "60"`
-  - `ATTENDANCE_TOLERANCE_MINUTES = "15"`
-- `LeaveRequest`: Başlangıç/bitiş tarihleri, gün sayısı, tür (`Mazeret`, `Rapor` vb.), durum (`Pending`, `Approved`, `Rejected`), onaylayan kullanıcı ve karar tarihini izler.
+---
 
-### 7. Görev ve Değerlendirme
-- `StudentTask`: Danışmanın öğrenciye atadığı işler (`Title`, `Description`, `DueDate`, `Status`, `AdvisorEvaluationNote`, `AdvisorScore`, `CompletedAt`).
+## 📡 REST API Uç Noktaları (Endpoints)
 
-### 8. İlişkisel Bütünlük ve Silme Davranışı (DeleteBehavior.Restrict)
-- MSSQL üzerindeki olası döngüsel silme (Cycle / Multiple Cascade Paths, Error 1785) problemlerini engellemek için kritik tablolarda `DeleteBehavior.Restrict` uygulanmıştır.
+| Modül | Metot | Endpoint | Rol / Yetki | Açıklama |
+| :--- | :--- | :--- | :--- | :--- |
+| **Auth** | `POST` | `/api/auth/login` | Anonymous | Kullanıcı adı/e-posta ve şifreyle giriş |
+| **Auth** | `POST` | `/api/auth/register-student` | Anonymous | Yeni İŞKUR öğrencisi kaydı (KVKK şifreli) |
+| **Auth** | `POST` | `/api/auth/refresh-token` | Anonymous | JWT erişim anahtarını yenileme |
+| **Auth** | `GET` | `/api/auth/me` | Authorize | Oturum açmış kullanıcının kimlik ve rol özeti |
+| **Plan** | `POST` | `/api/plan` | Ogrenci | Aylık çalışma planı taslağı oluşturma/güncelleme |
+| **Plan** | `POST` | `/api/plan/{id}/submit` | Ogrenci | Planı danışman onayına sunma |
+| **Plan** | `POST` | `/api/plan/{id}/evaluate` | Danisman, BolumBaskani, Dekanlik | Planı onaylama / gerekçeli reddetme |
+| **Plan** | `GET` | `/api/plan/{id}` | Authorize | Plan detayları ve günleri |
+| **Plan** | `GET` | `/api/plan/student/{studentId}/{year}/{month}` | Authorize | Öğrencinin dönemlik planı |
+| **Plan** | `GET` | `/api/plan/pending` | Danisman, BolumBaskani, Dekanlik | Onay bekleyen planlar listesi |
+| **Attendance** | `POST` | `/api/attendance/qr-session` | Danisman, Dekanlik, BolumBaskani | 30 sn'lik dinamik QR oturumu oluşturma |
+| **Attendance** | `POST` | `/api/attendance/check-in` | Ogrenci | 30 sn'lik QR okutarak devam kaydı oluşturma |
+| **Attendance** | `POST` | `/api/attendance/{id}/check-out` | Ogrenci | Mesai bitişi çıkış kaydı |
+| **Attendance** | `POST` | `/api/attendance/manual` | Danisman, Dekanlik | Manuel devam onaylama |
+| **Attendance** | `GET` | `/api/attendance/student/{studentId}` | Authorize | Öğrencinin devam geçmişi |
+| **Attendance** | `GET` | `/api/attendance/today` | Danisman, Dekanlik, BolumBaskani | Bugünün gerçekleşen devam kayıtları |
+| **Leave** | `POST` | `/api/leave` | Ogrenci | İzin talebi oluşturma |
+| **Leave** | `POST` | `/api/leave/{id}/evaluate` | Danisman, Dekanlik | İzin onaylama / reddetme |
+| **Leave** | `GET` | `/api/leave/balance/{studentId}` | Authorize | Kalan izin ve `HasLeaveWarning` kontrolü |
+| **Leave** | `GET` | `/api/leave/pending` | Danisman, Dekanlik | Onay bekleyen izin talepleri |
+| **Task** | `POST` | `/api/task` | Danisman, BolumBaskani, Dekanlik | Öğrenciye görev atama |
+| **Task** | `PUT` | `/api/task/{id}/status` | Ogrenci | Görev durumunu güncelleme ve teslim notu |
+| **Task** | `POST` | `/api/task/{id}/evaluate` | Danisman, BolumBaskani, Dekanlik | Göreve danışman değerlendirme notu ve puanı |
+| **Task** | `GET` | `/api/task/student/{studentId}` | Authorize | Öğrencinin görev listesi |
