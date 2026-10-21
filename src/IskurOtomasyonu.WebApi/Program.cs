@@ -121,4 +121,8 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapFallbackToFile("index.html");
 
+// 9. Veritabanı ve Çekirdek Demo Verilerini Başlat
+await IskurOtomasyonu.Infrastructure.Data.ApplicationDbInitializer.InitializeDatabaseAsync(app.Services);
+
 app.Run();
+
