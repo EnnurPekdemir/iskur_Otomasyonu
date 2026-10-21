@@ -24,30 +24,63 @@ public static class ApplicationDbInitializer
         var roleManager = services.GetRequiredService<RoleManager<ApplicationRole>>();
         var encryptionService = services.GetRequiredService<IEncryptionService>();
 
+        logger.LogInformation("Veritabanı başlatılıyor ve migrationlar kontrol ediliyor...");
+
+        // 1. Veritabanı Şemasını Garantiye Al
         try
         {
-            logger.LogInformation("Veritabanı başlatılıyor ve migrationlar kontrol ediliyor...");
-            
-            // Veritabanını oluştur / güncelle
             await context.Database.MigrateAsync();
+            logger.LogInformation("MigrateAsync başarıyla tamamlandı.");
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("MigrateAsync çalıştırılamadı ({Message}), EnsureCreatedAsync deneniyor...", ex.Message);
+            try
+            {
+                await context.Database.EnsureCreatedAsync();
+                logger.LogInformation("EnsureCreatedAsync ile veritabanı şeması oluşturuldu.");
+            }
+            catch (Exception innerEx)
+            {
+                logger.LogError(innerEx, "EnsureCreatedAsync hatası: {Message}", innerEx.Message);
+            }
+        }
 
-            // 1. Rolleri Kontrol Et / Oluştur
+        // 2. Rolleri Kontrol Et / Oluştur
+        try
+        {
             string[] roles = [AppRoles.Dekanlik, AppRoles.BolumBaskani, AppRoles.Danisman, AppRoles.Ogrenci];
             foreach (var role in roles)
             {
                 if (!await roleManager.RoleExistsAsync(role))
                 {
-                    await roleManager.CreateAsync(new ApplicationRole
+                    var roleResult = await roleManager.CreateAsync(new ApplicationRole
                     {
                         Name = role,
                         NormalizedName = role.ToUpperInvariant(),
                         Description = $"{role} Rolü",
                         IsSystemRole = true
                     });
+                    if (roleResult.Succeeded)
+                    {
+                        logger.LogInformation("Rol oluşturuldu: {Role}", role);
+                    }
+                    else
+                    {
+                        logger.LogWarning("Rol oluşturulamadı ({Role}): {Errors}", role, string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+                    }
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Roller oluşturulurken hata: {Message}", ex.Message);
+        }
 
-            // 2. Bölümleri Kontrol Et / Oluştur
+        // 3. Bölümleri Kontrol Et / Oluştur
+        Department? bmDept = null;
+        try
+        {
             if (!await context.Departments.AnyAsync())
             {
                 var departments = new List<Department>
@@ -60,29 +93,43 @@ public static class ApplicationDbInitializer
                 };
                 await context.Departments.AddRangeAsync(departments);
                 await context.SaveChangesAsync();
+                logger.LogInformation("Bölümler oluşturuldu.");
             }
+            bmDept = await context.Departments.FirstOrDefaultAsync(d => d.Code == "BM");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Bölümler oluşturulurken hata: {Message}", ex.Message);
+        }
 
-            var bmDept = await context.Departments.FirstAsync(d => d.Code == "BM");
-
-            // 3. Birimleri Kontrol Et / Oluştur
+        // 4. Birimleri Kontrol Et / Oluştur
+        Unit? defaultUnit = null;
+        try
+        {
             if (!await context.Units.AnyAsync())
             {
                 var units = new List<Unit>
                 {
-                    new() { Name = "Bilgi İşlem ve Ağ Yönetim Birimi", Capacity = 6, Description = "Fakülte sunucu ve laboratuvar altyapısı", DepartmentId = bmDept.Id },
-                    new() { Name = "Yazılım Geliştirme Laboratuvarı", Capacity = 8, Description = "Öğrenci otomasyon ve proje yazılımları", DepartmentId = bmDept.Id },
+                    new() { Name = "Bilgi İşlem ve Ağ Yönetim Birimi", Capacity = 6, Description = "Fakülte sunucu ve laboratuvar altyapısı", DepartmentId = bmDept?.Id },
+                    new() { Name = "Yazılım Geliştirme Laboratuvarı", Capacity = 8, Description = "Öğrenci otomasyon ve proje yazılımları", DepartmentId = bmDept?.Id },
                     new() { Name = "Öğrenci İşleri ve Yazı İşleri Bürosu", Capacity = 5, Description = "Öğrenci evrak, staj ve puantaj takibi" },
                     new() { Name = "Fakülte Kütüphanesi ve Çalışma Salonu", Capacity = 4, Description = "Öğrenci çalışma alanı düzeni" }
                 };
                 await context.Units.AddRangeAsync(units);
                 await context.SaveChangesAsync();
+                logger.LogInformation("Birimler oluşturuldu.");
             }
+            defaultUnit = await context.Units.FirstOrDefaultAsync();
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Birimler oluşturulurken hata: {Message}", ex.Message);
+        }
 
-            var defaultUnit = await context.Units.FirstAsync();
-
-            // 4. Demo Kullanıcıları Kontrol Et / Oluştur
-
-            // A) Dekanlık Yetkilisi
+        // 5. Demo Kullanıcıları Kontrol Et / Oluştur
+        try
+        {
+            // A) Dekanlık
             var dekanUser = await userManager.FindByEmailAsync("dekanlik@tf.edu.tr");
             if (dekanUser == null)
             {
@@ -101,6 +148,11 @@ public static class ApplicationDbInitializer
                 if (createResult.Succeeded)
                 {
                     await userManager.AddToRoleAsync(dekanUser, AppRoles.Dekanlik);
+                    logger.LogInformation("Dekanlık kullanıcısı oluşturuldu.");
+                }
+                else
+                {
+                    logger.LogError("Dekanlık oluşturulamadı: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
                 }
             }
 
@@ -123,12 +175,20 @@ public static class ApplicationDbInitializer
                 if (createResult.Succeeded)
                 {
                     await userManager.AddToRoleAsync(baskanUser, AppRoles.BolumBaskani);
-                    bmDept.HeadOfDepartmentId = baskanUser.Id;
-                    await context.SaveChangesAsync();
+                    if (bmDept != null)
+                    {
+                        bmDept.HeadOfDepartmentId = baskanUser.Id;
+                        await context.SaveChangesAsync();
+                    }
+                    logger.LogInformation("Bölüm Başkanı kullanıcısı oluşturuldu.");
+                }
+                else
+                {
+                    logger.LogError("Bölüm Başkanı oluşturulamadı: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
                 }
             }
 
-            // C) Danışman Öğretim Elemanı
+            // C) Danışman
             var danismanUser = await userManager.FindByEmailAsync("danisman@tf.edu.tr");
             if (danismanUser == null)
             {
@@ -147,6 +207,11 @@ public static class ApplicationDbInitializer
                 if (createResult.Succeeded)
                 {
                     await userManager.AddToRoleAsync(danismanUser, AppRoles.Danisman);
+                    logger.LogInformation("Danışman kullanıcısı oluşturuldu.");
+                }
+                else
+                {
+                    logger.LogError("Danışman oluşturulamadı: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
                 }
             }
 
@@ -168,114 +233,116 @@ public static class ApplicationDbInitializer
                 if (createResult.Succeeded)
                 {
                     await userManager.AddToRoleAsync(ogrenciUser, AppRoles.Ogrenci);
+                    logger.LogInformation("Öğrenci hesabı oluşturuldu.");
 
-                    // Student profil kaydı
-                    var tcNoRaw = "12345678901";
-                    var ibanRaw = "TR330006100511123456789012";
-
-                    var student = new Student
+                    // Öğrenci profili
+                    if (bmDept != null)
                     {
-                        UserId = ogrenciUser.Id,
-                        StudentNumber = "2210206001",
-                        DepartmentId = bmDept.Id,
-                        ClassLevel = 4,
-                        Gpa = 3.45m,
-                        Status = StudentStatus.Active,
-                        RemainingLeaveDays = 10,
-                        EncryptedTcNo = encryptionService.Encrypt(tcNoRaw),
-                        TcNoHash = encryptionService.ComputeHash(tcNoRaw),
-                        EncryptedIban = encryptionService.Encrypt(ibanRaw)
-                    };
-                    await context.Students.AddAsync(student);
-                    await context.SaveChangesAsync();
+                        var tcNoRaw = "12345678901";
+                        var ibanRaw = "TR330006100511123456789012";
 
-                    // Danışman Ataması
-                    if (danismanUser != null)
-                    {
-                        var advAssign = new StudentAdvisorAssignment
+                        var student = new Student
+                        {
+                            UserId = ogrenciUser.Id,
+                            StudentNumber = "2210206001",
+                            DepartmentId = bmDept.Id,
+                            ClassLevel = 4,
+                            Gpa = 3.45m,
+                            Status = StudentStatus.Active,
+                            RemainingLeaveDays = 10,
+                            EncryptedTcNo = encryptionService.Encrypt(tcNoRaw),
+                            TcNoHash = encryptionService.ComputeHash(tcNoRaw),
+                            EncryptedIban = encryptionService.Encrypt(ibanRaw)
+                        };
+                        await context.Students.AddAsync(student);
+                        await context.SaveChangesAsync();
+
+                        // Danışman Ataması
+                        if (danismanUser != null)
+                        {
+                            var advAssign = new StudentAdvisorAssignment
+                            {
+                                StudentId = student.Id,
+                                AdvisorId = danismanUser.Id,
+                                StartDate = DateTime.UtcNow.AddMonths(-1),
+                                IsActive = true,
+                                AssignmentNote = "2026 Bahar Dönemi İŞKUR Danışmanı"
+                            };
+                            await context.StudentAdvisorAssignments.AddAsync(advAssign);
+                        }
+
+                        // Birim Görevlendirmesi
+                        if (defaultUnit != null)
+                        {
+                            var unitAssign = new StudentUnitAssignment
+                            {
+                                StudentId = student.Id,
+                                UnitId = defaultUnit.Id,
+                                StartDate = DateTime.UtcNow.AddMonths(-1),
+                                IsActive = true,
+                                AssignmentNote = "Yazılım ve Laboratuvar Görevlendirmesi"
+                            };
+                            await context.StudentUnitAssignments.AddAsync(unitAssign);
+                        }
+
+                        // Bu ay için örnek onaylı çalışma planı oluştur
+                        var now = DateTime.UtcNow;
+                        var plan = new MonthlyPlan
                         {
                             StudentId = student.Id,
-                            AdvisorId = danismanUser.Id,
-                            StartDate = DateTime.UtcNow.AddMonths(-1),
-                            IsActive = true,
-                            AssignmentNote = "2026 Bahar Dönemi İŞKUR Danışmanı"
+                            Year = now.Year,
+                            Month = now.Month,
+                            ApprovalStatus = MonthlyPlanStatus.Approved,
+                            TotalTargetHours = 15,
+                            ApprovedByUserId = danismanUser?.Id,
+                            ApprovalDate = now.AddDays(-2)
                         };
-                        await context.StudentAdvisorAssignments.AddAsync(advAssign);
-                    }
+                        await context.MonthlyPlans.AddAsync(plan);
+                        await context.SaveChangesAsync();
 
-                    // Birim Görevlendirmesi
-                    var unitAssign = new StudentUnitAssignment
-                    {
-                        StudentId = student.Id,
-                        UnitId = defaultUnit.Id,
-                        StartDate = DateTime.UtcNow.AddMonths(-1),
-                        IsActive = true,
-                        AssignmentNote = "Yazılım ve Laboratuvar Görevlendirmesi"
-                    };
-                    await context.StudentUnitAssignments.AddAsync(unitAssign);
-
-                    // Bu ay için örnek onaylı çalışma planı oluştur
-                    var now = DateTime.UtcNow;
-                    var plan = new MonthlyPlan
-                    {
-                        StudentId = student.Id,
-                        Year = now.Year,
-                        Month = now.Month,
-                        ApprovalStatus = MonthlyPlanStatus.Approved,
-                        TotalTargetHours = 15,
-                        ApprovedByUserId = danismanUser?.Id,
-                        ApprovalDate = now.AddDays(-2)
-                    };
-                    await context.MonthlyPlans.AddAsync(plan);
-                    await context.SaveChangesAsync();
-
-                    // Bugün için bir plan günü ekle (QR yoklaması hemen test edilebilsin!)
-                    var todayPlanDay = new PlanDay
-                    {
-                        MonthlyPlanId = plan.Id,
-                        Date = now.Date,
-                        StartTime = new TimeSpan(9, 0, 0),
-                        EndTime = new TimeSpan(14, 0, 0),
-                        PlannedHours = 5,
-                        DayStatus = PlanDayStatus.Planned,
-                        Notes = "Sistem başlangıç test çalışma günü"
-                    };
-                    await context.PlanDays.AddAsync(todayPlanDay);
-
-                    // Örnek bir görev ata
-                    if (danismanUser != null)
-                    {
-                        var task = new StudentTask
+                        // Bugün için bir plan günü ekle (QR yoklaması hemen yapılabilsin)
+                        var todayPlanDay = new PlanDay
                         {
-                            StudentId = student.Id,
-                            AssignedByUserId = danismanUser.Id,
-                            Title = "İŞKUR Otomasyonu Proje Dokümantasyonu",
-                            Description = "Geliştirilen dinamik QR devam takip sisteminin kullanım kılavuzunu hazırlayınız.",
-                            DueDate = now.AddDays(7),
-                            Status = StudentTaskStatus.Pending
+                            MonthlyPlanId = plan.Id,
+                            Date = now.Date,
+                            StartTime = new TimeSpan(9, 0, 0),
+                            EndTime = new TimeSpan(14, 0, 0),
+                            PlannedHours = 5,
+                            DayStatus = PlanDayStatus.Planned,
+                            Notes = "Sistem başlangıç test çalışma günü"
                         };
-                        await context.StudentTasks.AddAsync(task);
-                    }
+                        await context.PlanDays.AddAsync(todayPlanDay);
 
-                    await context.SaveChangesAsync();
+                        // Örnek bir görev ata
+                        if (danismanUser != null)
+                        {
+                            var task = new StudentTask
+                            {
+                                StudentId = student.Id,
+                                AssignedByUserId = danismanUser.Id,
+                                Title = "İŞKUR Otomasyonu Proje Dokümantasyonu",
+                                Description = "Geliştirilen dinamik QR devam takip sisteminin kullanım kılavuzunu hazırlayınız.",
+                                DueDate = now.AddDays(7),
+                                Status = StudentTaskStatus.Pending
+                            };
+                            await context.StudentTasks.AddAsync(task);
+                        }
+
+                        await context.SaveChangesAsync();
+                        logger.LogInformation("Öğrenci profili, danışman/birim atamaları ve planı oluşturuldu.");
+                    }
+                }
+                else
+                {
+                    logger.LogError("Öğrenci oluşturulamadı: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
                 }
             }
-
-            logger.LogInformation("Veritabanı ve çekirdek demo verileri başarıyla hazırlandı.");
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Veritabanı başlatılırken hata oluştu: {Message}", ex.Message);
-            // LocalDB hatası durumunda EnsureCreated ile kurtarma dene
-            try
-            {
-                await context.Database.EnsureCreatedAsync();
-                logger.LogInformation("EnsureCreated ile veritabanı şeması oluşturuldu.");
-            }
-            catch (Exception innerEx)
-            {
-                logger.LogError(innerEx, "EnsureCreated denemesi de başarısız oldu.");
-            }
+            logger.LogError(ex, "Kullanıcılar oluşturulurken hata: {Message}", ex.Message);
         }
+
+        logger.LogInformation("Veritabanı başlatma ve tohumlama süreci tamamlandı.");
     }
 }
