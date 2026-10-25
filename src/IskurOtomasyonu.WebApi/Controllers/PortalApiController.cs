@@ -36,8 +36,8 @@ public class PortalApiController : ControllerBase
         if (string.IsNullOrEmpty(identifier))
             return BadRequest(new { error = "Kullanıcı bilgisi boş olamaz." });
 
-        // Örnek hızlı demo girişleri
-        if (identifier == "20231011" || identifier == "2210206001")
+        // Selçuk Üniversitesi Teknoloji Fakültesi Gerçek Yönetici & Akademik Kadro Girişleri
+        if (identifier == "2210206001" || identifier == "20231011" || identifier.Contains("aliveli") || identifier.Contains("ennur"))
         {
             return Ok(new
             {
@@ -45,67 +45,67 @@ public class PortalApiController : ControllerBase
                 {
                     id = 1,
                     student_id = 1,
-                    full_name = "Ali Veli",
+                    full_name = identifier == "2210206001" || identifier.Contains("ennur") ? "Ennur Pekdemir" : "Ali Veli",
                     role = "student",
-                    student_no = "20231011",
-                    email = "aliveli@ogr.universite.edu.tr"
+                    student_no = identifier == "2210206001" || identifier.Contains("ennur") ? "2210206001" : "20231011",
+                    email = "2210206001@ogr.selcuk.edu.tr"
                 }
             });
         }
-        if (identifier.Contains("ahmet.yilmaz") || identifier.Contains("danisman"))
+        if (identifier.Contains("stasdemir") || identifier.Contains("ahmet.yilmaz") || identifier.Contains("danisman"))
         {
             return Ok(new
             {
                 user = new
                 {
                     id = 2,
-                    full_name = "Dr. Ahmet Yılmaz",
+                    full_name = "Prof. Dr. Şakir Taşdemir",
                     role = "advisor",
-                    email = "ahmet.yilmaz@universite.edu.tr"
+                    email = "stasdemir@selcuk.edu.tr"
                 }
             });
         }
-        if (identifier.Contains("bbaskan") || identifier.Contains("baskan"))
+        if (identifier.Contains("basciftci") || identifier.Contains("bbaskan") || identifier.Contains("baskan"))
         {
             return Ok(new
             {
                 user = new
                 {
                     id = 3,
-                    full_name = "Doç. Dr. Selin Kaya",
+                    full_name = "Prof. Dr. Fatih Başçiftçi",
                     role = "head",
-                    email = "bbaskan@universite.edu.tr"
+                    email = "basciftci@selcuk.edu.tr"
                 }
             });
         }
-        if (identifier.Contains("sekreter"))
+        if (identifier.Contains("hunal") || identifier.Contains("sekreter"))
         {
             return Ok(new
             {
                 user = new
                 {
                     id = 4,
-                    full_name = "Ayşe Demir",
+                    full_name = "Hasan Ünal",
                     role = "secretary",
-                    email = "sekreter@universite.edu.tr"
+                    email = "hunal@selcuk.edu.tr"
                 }
             });
         }
-        if (identifier.Contains("dekan"))
+        if (identifier.Contains("hkahramanli") || identifier.Contains("dekan"))
         {
             return Ok(new
             {
                 user = new
                 {
                     id = 5,
-                    full_name = "Prof. Dr. Kemal Aydın",
+                    full_name = "Prof. Dr. Humar Kahramanlı Örnek",
                     role = "dean",
-                    email = "dekan@universite.edu.tr"
+                    email = "hkahramanli@selcuk.edu.tr"
                 }
             });
         }
 
-        // DB'den kontrol
+        // DB Kontrolü (Identity)
         var user = await _userManager.FindByEmailAsync(identifier) ?? await _userManager.FindByNameAsync(identifier);
         if (user != null)
         {
@@ -137,46 +137,42 @@ public class PortalApiController : ControllerBase
     [HttpGet("init")]
     public async Task<IActionResult> Init(CancellationToken ct)
     {
-        var dbDepartments = await _context.Departments
-            .OrderBy(d => d.Id)
-            .Select(d => new
-            {
-                id = (object)d.Id,
-                name = d.Name,
-                budget_allocated = 40000.0
-            })
-            .ToListAsync(ct);
-
-        IEnumerable<object> departments = dbDepartments;
-        if (!departments.Any())
+        // Selçuk Üniversitesi Teknoloji Fakültesi Resmi Bölümleri
+        var departments = new List<object>
         {
-            departments = new List<object>
-            {
-                new { id = (object)1, name = "Bilgisayar Mühendisliği", budget_allocated = 45000.0 },
-                new { id = (object)2, name = "Elektrik-Elektronik Mühendisliği", budget_allocated = 35000.0 },
-                new { id = (object)3, name = "Makine Mühendisliği", budget_allocated = 30000.0 }
-            };
-        }
-
-        var advisors = new List<object>
-        {
-            new { id = 2, full_name = "Dr. Ahmet Yılmaz", department_id = 1 },
-            new { id = 6, full_name = "Dr. Mehmet Özkan", department_id = 2 }
+            new { id = 1, name = "Bilgisayar Mühendisliği", head_name = "Prof. Dr. Fatih Başçiftçi", budget_allocated = 50000.0 },
+            new { id = 2, name = "Elektrik-Elektronik Mühendisliği", head_name = "Prof. Dr. İsmail Sarıtaş", budget_allocated = 42000.0 },
+            new { id = 3, name = "Mekatronik Mühendisliği", head_name = "Doç. Dr. Ali Yaşar", budget_allocated = 38000.0 },
+            new { id = 4, name = "Makine Mühendisliği", head_name = "Prof. Dr. Süleyman Neşeli", budget_allocated = 35000.0 },
+            new { id = 5, name = "Metalurji ve Malzeme Mühendisliği", head_name = "Prof. Dr. Nurcan Akduran", budget_allocated = 28000.0 },
+            new { id = 6, name = "Biyomedikal Mühendisliği", head_name = "Doç. Dr. M. Serdar Başçıl", budget_allocated = 25000.0 }
         };
 
+        // Gerçek Öğretim Üyesi Danışmanlar
+        var advisors = new List<object>
+        {
+            new { id = 2, full_name = "Prof. Dr. Şakir Taşdemir", department_id = 1 },
+            new { id = 3, full_name = "Prof. Dr. Fatih Başçiftçi", department_id = 1 },
+            new { id = 7, full_name = "Doç. Dr. İlker Ali Özkan", department_id = 1 },
+            new { id = 8, full_name = "Doç. Dr. Tahir Sağ", department_id = 1 },
+            new { id = 9, full_name = "Prof. Dr. İsmail Sarıtaş", department_id = 2 },
+            new { id = 10, full_name = "Doç. Dr. Ali Yaşar", department_id = 3 }
+        };
+
+        // Kısmi Zamanlı Öğrenci Listesi
         var students = new List<object>
         {
             new
             {
                 id = 1,
-                student_no = "20231011",
-                full_name = "Ali Veli",
+                student_no = "2210206001",
+                full_name = "Ennur Pekdemir",
                 department_id = 1,
                 department_name = "Bilgisayar Mühendisliği",
                 unit_name = "Yazılım Laboratuvarı",
                 advisor_id = 2,
-                advisor_name = "Dr. Ahmet Yılmaz",
-                daily_wage = 650.0,
+                advisor_name = "Prof. Dr. Şakir Taşdemir",
+                daily_wage = 666.75,
                 status = "active",
                 full_class_days = "1,3",
                 conflict_days = "5",
@@ -184,49 +180,70 @@ public class PortalApiController : ControllerBase
                 worked_days_count = 6,
                 planned_days_count = 8,
                 attendance_rate = 75,
-                calculated_salary = 3900.0,
+                calculated_salary = 4000.50,
                 exceeded_limit = false
             },
             new
             {
                 id = 2,
-                student_no = "20231012",
-                full_name = "Fatma Şahin",
+                student_no = "20231011",
+                full_name = "Ali Veli",
                 department_id = 1,
                 department_name = "Bilgisayar Mühendisliği",
-                unit_name = "Fakülte Kütüphanesi",
+                unit_name = "Bilişim ve Ağ Laboratuvarı",
                 advisor_id = 2,
-                advisor_name = "Dr. Ahmet Yılmaz",
-                daily_wage = 650.0,
+                advisor_name = "Prof. Dr. Şakir Taşdemir",
+                daily_wage = 666.75,
                 status = "active",
                 full_class_days = "2",
                 conflict_days = "",
                 total_leave_days = 11,
-                worked_days_count = 2,
+                worked_days_count = 3,
                 planned_days_count = 4,
-                attendance_rate = 50,
-                calculated_salary = 1300.0,
+                attendance_rate = 75,
+                calculated_salary = 2000.25,
                 exceeded_limit = true
             },
             new
             {
                 id = 3,
-                student_no = "20231013",
-                full_name = "Caner Erkin",
-                department_id = 2,
-                department_name = "Elektrik-Elektronik Mühendisliği",
-                unit_name = "Robotik Atölyesi",
-                advisor_id = 6,
-                advisor_name = "Dr. Mehmet Özkan",
-                daily_wage = 650.0,
+                student_no = "20231012",
+                full_name = "Fatma Şahin",
+                department_id = 3,
+                department_name = "Mekatronik Mühendisliği",
+                unit_name = "Robotik ve Otomasyon Atölyesi",
+                advisor_id = 10,
+                advisor_name = "Doç. Dr. Ali Yaşar",
+                daily_wage = 666.75,
                 status = "active",
                 full_class_days = "4",
                 conflict_days = "",
                 total_leave_days = 3,
-                worked_days_count = 1,
-                planned_days_count = 2,
-                attendance_rate = 50,
-                calculated_salary = 650.0,
+                worked_days_count = 2,
+                planned_days_count = 3,
+                attendance_rate = 67,
+                calculated_salary = 1333.50,
+                exceeded_limit = false
+            },
+            new
+            {
+                id = 4,
+                student_no = "20231013",
+                full_name = "Caner Erkin",
+                department_id = 2,
+                department_name = "Elektrik-Elektronik Mühendisliği",
+                unit_name = "Elektronik Devre Laboratuvarı",
+                advisor_id = 9,
+                advisor_name = "Prof. Dr. İsmail Sarıtaş",
+                daily_wage = 666.75,
+                status = "active",
+                full_class_days = "3",
+                conflict_days = "",
+                total_leave_days = 1,
+                worked_days_count = 4,
+                planned_days_count = 4,
+                attendance_rate = 100,
+                calculated_salary = 2667.00,
                 exceeded_limit = false
             }
         };
@@ -236,11 +253,11 @@ public class PortalApiController : ControllerBase
             new
             {
                 id = 1,
-                author_id = 3,
+                author_id = 5,
                 department_id = "all",
-                department_name = "Tüm Fakülte",
-                title = "Ekim Ayı Puantaj Teslim Tarihleri",
-                content = "Kısmi zamanlı çalışan tüm öğrencilerin ekim ayı yoklama ve puantaj cetvellerini en geç ayın 28'ine kadar sekreterliğe onaylatmaları gerekmektedir."
+                department_name = "Dekanlık — Tüm Fakülte",
+                title = "2026-2027 Güz Dönemi İŞKUR Puantaj Teslimleri",
+                content = "Kısmi zamanlı çalışan tüm öğrencilerin ekim ayı yoklama ve puantaj cetvellerini Fakülte Sekreteri Hasan Ünal onayına sunmaları rica olunur."
             },
             new
             {
@@ -248,8 +265,8 @@ public class PortalApiController : ControllerBase
                 author_id = 3,
                 department_id = 1,
                 department_name = "Bilgisayar Mühendisliği",
-                title = "Laboratuvar Cihaz Sayımı",
-                content = "Bu cuma günü lab bünyesindeki tüm bilgisayarlar ve ağ donanımları kontrol edilecektir."
+                title = "Yazılım ve Ağ Laboratuvarı Cihaz Sayımı",
+                content = "Bölümümüz bünyesindeki laboratuvar cihazlarının envanter kontrolü Prof. Dr. Şakir Taşdemir gözetiminde yapılacaktır."
             }
         };
 
@@ -269,11 +286,11 @@ public class PortalApiController : ControllerBase
         var student = new
         {
             id = student_id,
-            student_no = student_id == 1 ? "20231011" : "20231012",
-            full_name = student_id == 1 ? "Ali Veli" : "Fatma Şahin",
+            student_no = student_id == 1 ? "2210206001" : "20231011",
+            full_name = student_id == 1 ? "Ennur Pekdemir" : "Ali Veli",
             department_name = "Bilgisayar Mühendisliği",
-            unit_name = student_id == 1 ? "Yazılım Laboratuvarı" : "Fakülte Kütüphanesi",
-            advisor_name = "Dr. Ahmet Yılmaz",
+            unit_name = student_id == 1 ? "Yazılım Laboratuvarı" : "Bilişim ve Ağ Laboratuvarı",
+            advisor_name = "Prof. Dr. Şakir Taşdemir",
             status = "active",
             full_class_days = student_id == 1 ? "1,3" : "2",
             conflict_days = student_id == 1 ? "5" : ""
@@ -294,8 +311,8 @@ public class PortalApiController : ControllerBase
 
         var tasks = new List<object>
         {
-            new { id = 1, advisor_id = 2, student_id, title = "Ağ anahtarları ve kablolama kontrolü", due_date = "2026-10-30", status = "pending", advisor_name = "Dr. Ahmet Yılmaz" },
-            new { id = 2, advisor_id = 2, student_id, title = "PC format ve laboratuvar imaj kurulumu", due_date = "2026-10-24", status = "completed", advisor_name = "Dr. Ahmet Yılmaz" }
+            new { id = 1, advisor_id = 2, student_id, title = "Yazılım laboratuvarı işletim sistemi imajlarının güncellenmesi", due_date = "2026-10-30", status = "pending", advisor_name = "Prof. Dr. Şakir Taşdemir" },
+            new { id = 2, advisor_id = 2, student_id, title = "Ağ anahtarları port konfigürasyonu ve testleri", due_date = "2026-10-24", status = "completed", advisor_name = "Prof. Dr. Şakir Taşdemir" }
         };
 
         var excuses = new List<object>
@@ -311,7 +328,7 @@ public class PortalApiController : ControllerBase
                 total_worked_days = 6,
                 monthly_worked_days = 6,
                 monthly_planned_days = 8,
-                monthly_estimated_salary = 3900.0,
+                monthly_estimated_salary = 4000.50,
                 total_leave_days = 2
             },
             plans,
@@ -345,8 +362,8 @@ public class PortalApiController : ControllerBase
             {
                 id = 1,
                 student_id = 1,
-                student_name = "Ali Veli",
-                student_no = "20231011",
+                student_name = "Ennur Pekdemir",
+                student_no = "2210206001",
                 unit_name = "Yazılım Laboratuvarı",
                 check_in = "08:30",
                 check_out = "12:30",
@@ -356,9 +373,9 @@ public class PortalApiController : ControllerBase
             {
                 id = 2,
                 student_id = 2,
-                student_name = "Fatma Şahin",
-                student_no = "20231012",
-                unit_name = "Fakülte Kütüphanesi",
+                student_name = "Ali Veli",
+                student_no = "20231011",
+                unit_name = "Bilişim ve Ağ Laboratuvarı",
                 check_in = "09:00",
                 check_out = "13:00",
                 attendance_status = "worked"
@@ -380,9 +397,9 @@ public class PortalApiController : ControllerBase
     {
         var list = new List<object>
         {
-            new { id = 1, advisor_id = 2, student_id = 1, student_name = "Ali Veli", unit_name = "Yazılım Laboratuvarı", title = "Ağ anahtarları ve kablolama kontrolü", due_date = "2026-10-30", status = "pending", advisor_name = "Dr. Ahmet Yılmaz" },
-            new { id = 2, advisor_id = 2, student_id = 1, student_name = "Ali Veli", unit_name = "Yazılım Laboratuvarı", title = "PC format ve laboratuvar imaj kurulumu", due_date = "2026-10-24", status = "completed", advisor_name = "Dr. Ahmet Yılmaz" },
-            new { id = 3, advisor_id = 2, student_id = 2, student_name = "Fatma Şahin", unit_name = "Fakülte Kütüphanesi", title = "Kütüphane kitap tasnif ve barkodlama", due_date = "2026-10-28", status = "pending", advisor_name = "Dr. Ahmet Yılmaz" }
+            new { id = 1, advisor_id = 2, student_id = 1, student_name = "Ennur Pekdemir", unit_name = "Yazılım Laboratuvarı", title = "Yazılım laboratuvarı işletim sistemi imajlarının güncellenmesi", due_date = "2026-10-30", status = "pending", advisor_name = "Prof. Dr. Şakir Taşdemir" },
+            new { id = 2, advisor_id = 2, student_id = 1, student_name = "Ennur Pekdemir", unit_name = "Yazılım Laboratuvarı", title = "Ağ anahtarları port konfigürasyonu ve testleri", due_date = "2026-10-24", status = "completed", advisor_name = "Prof. Dr. Şakir Taşdemir" },
+            new { id = 3, advisor_id = 2, student_id = 2, student_name = "Ali Veli", unit_name = "Bilişim ve Ağ Laboratuvarı", title = "Laboratuvar yedekleme sunucusunun kontrolü", due_date = "2026-10-28", status = "pending", advisor_name = "Prof. Dr. Şakir Taşdemir" }
         };
         return Ok(list);
     }
@@ -408,61 +425,87 @@ public class PortalApiController : ControllerBase
             new
             {
                 id = 1,
-                student_no = "20231011",
-                full_name = "Ali Veli",
+                student_no = "2210206001",
+                full_name = "Ennur Pekdemir",
                 department_id = 1,
                 department_name = "Bilgisayar Mühendisliği",
                 unit_name = "Yazılım Laboratuvarı",
                 advisor_id = 2,
-                advisor_name = "Dr. Ahmet Yılmaz",
-                daily_wage = 650.0,
+                advisor_name = "Prof. Dr. Şakir Taşdemir",
+                daily_wage = 666.75,
                 status = "active",
                 total_leave_days = 2,
                 worked_days_count = 6,
                 planned_days_count = 8,
                 attendance_rate = 75,
-                calculated_salary = 3900.0,
+                calculated_salary = 4000.50,
                 exceeded_limit = false
             },
             new
             {
                 id = 2,
-                student_no = "20231012",
-                full_name = "Fatma Şahin",
+                student_no = "20231011",
+                full_name = "Ali Veli",
                 department_id = 1,
                 department_name = "Bilgisayar Mühendisliği",
-                unit_name = "Fakülte Kütüphanesi",
+                unit_name = "Bilişim ve Ağ Laboratuvarı",
                 advisor_id = 2,
-                advisor_name = "Dr. Ahmet Yılmaz",
-                daily_wage = 650.0,
+                advisor_name = "Prof. Dr. Şakir Taşdemir",
+                daily_wage = 666.75,
                 status = "active",
                 total_leave_days = 11,
-                worked_days_count = 2,
+                worked_days_count = 3,
                 planned_days_count = 4,
-                attendance_rate = 50,
-                calculated_salary = 1300.0,
+                attendance_rate = 75,
+                calculated_salary = 2000.25,
                 exceeded_limit = true
             },
             new
             {
                 id = 3,
+                student_no = "20231012",
+                full_name = "Fatma Şahin",
+                department_id = 3,
+                department_name = "Mekatronik Mühendisliği",
+                unit_name = "Robotik ve Otomasyon Atölyesi",
+                advisor_id = 10,
+                advisor_name = "Doç. Dr. Ali Yaşar",
+                daily_wage = 666.75,
+                status = "active",
+                total_leave_days = 3,
+                worked_days_count = 2,
+                planned_days_count = 3,
+                attendance_rate = 67,
+                calculated_salary = 1333.50,
+                exceeded_limit = false
+            },
+            new
+            {
+                id = 4,
                 student_no = "20231013",
                 full_name = "Caner Erkin",
                 department_id = 2,
                 department_name = "Elektrik-Elektronik Mühendisliği",
-                unit_name = "Robotik Atölyesi",
-                advisor_id = 6,
-                advisor_name = "Dr. Mehmet Özkan",
-                daily_wage = 650.0,
+                unit_name = "Elektronik Devre Laboratuvarı",
+                advisor_id = 9,
+                advisor_name = "Prof. Dr. İsmail Sarıtaş",
+                daily_wage = 666.75,
                 status = "active",
-                total_leave_days = 3,
-                worked_days_count = 1,
-                planned_days_count = 2,
-                attendance_rate = 50,
-                calculated_salary = 650.0,
+                total_leave_days = 1,
+                worked_days_count = 4,
+                planned_days_count = 4,
+                attendance_rate = 100,
+                calculated_salary = 2667.00,
                 exceeded_limit = false
             }
         };
+
+        if (!string.IsNullOrEmpty(search))
+        {
+            var q = search.ToLowerInvariant();
+            list = list.Where(s => ((dynamic)s).full_name.ToLower().Contains(q) || ((dynamic)s).student_no.Contains(q)).ToList();
+        }
+
         return Ok(list);
     }
 
@@ -487,11 +530,11 @@ public class PortalApiController : ControllerBase
             new
             {
                 id = 1,
-                author_id = 3,
+                author_id = 5,
                 department_id = "all",
-                department_name = "Tüm Fakülte",
-                title = "Ekim Ayı Puantaj Teslim Tarihleri",
-                content = "Kısmi zamanlı çalışan tüm öğrencilerin ekim ayı yoklama ve puantaj cetvellerini en geç ayın 28'ine kadar sekreterliğe onaylatmaları gerekmektedir."
+                department_name = "Dekanlık — Tüm Fakülte",
+                title = "2026-2027 Güz Dönemi İŞKUR Puantaj Teslimleri",
+                content = "Kısmi zamanlı çalışan tüm öğrencilerin ekim ayı yoklama ve puantaj cetvellerini Fakülte Sekreteri Hasan Ünal onayına sunmaları rica olunur."
             },
             new
             {
@@ -499,8 +542,8 @@ public class PortalApiController : ControllerBase
                 author_id = 3,
                 department_id = 1,
                 department_name = "Bilgisayar Mühendisliği",
-                title = "Laboratuvar Cihaz Sayımı",
-                content = "Bu cuma günü lab bünyesindeki tüm bilgisayarlar ve ağ donanımları kontrol edilecektir."
+                title = "Yazılım ve Ağ Laboratuvarı Cihaz Sayımı",
+                content = "Bölümümüz bünyesindeki laboratuvar cihazlarının envanter kontrolü Prof. Dr. Şakir Taşdemir gözetiminde yapılacaktır."
             }
         };
         return Ok(announcements);
@@ -528,10 +571,10 @@ public class PortalApiController : ControllerBase
             {
                 id = 1,
                 student_id = 1,
-                student_name = "Ali Veli",
-                student_no = "20231011",
+                student_name = "Ennur Pekdemir",
+                student_no = "2210206001",
                 unit_name = "Yazılım Laboratuvarı",
-                advisor_name = "Dr. Ahmet Yılmaz",
+                advisor_name = "Prof. Dr. Şakir Taşdemir",
                 excuse_date = "2026-10-20",
                 reason = "Vize sınavı çakışması",
                 status = "approved"
@@ -540,10 +583,10 @@ public class PortalApiController : ControllerBase
             {
                 id = 2,
                 student_id = 2,
-                student_name = "Fatma Şahin",
-                student_no = "20231012",
-                unit_name = "Fakülte Kütüphanesi",
-                advisor_name = "Dr. Ahmet Yılmaz",
+                student_name = "Ali Veli",
+                student_no = "20231011",
+                unit_name = "Bilişim ve Ağ Laboratuvarı",
+                advisor_name = "Prof. Dr. Şakir Taşdemir",
                 excuse_date = "2026-10-26",
                 reason = "Sağlık raporu",
                 status = "pending"
@@ -570,16 +613,20 @@ public class PortalApiController : ControllerBase
     {
         var departments = new List<object>
         {
-            new { id = 1, name = "Bilgisayar Mühendisliği", budget_allocated = 45000.0, used_budget = 5200.0, remaining_budget = 39800.0, student_count = 2 },
-            new { id = 2, name = "Elektrik-Elektronik Mühendisliği", budget_allocated = 35000.0, used_budget = 650.0, remaining_budget = 34350.0, student_count = 1 },
-            new { id = 3, name = "Makine Mühendisliği", budget_allocated = 30000.0, used_budget = 0.0, remaining_budget = 30000.0, student_count = 0 }
+            new { id = 1, name = "Bilgisayar Mühendisliği", budget_allocated = 50000.0, used_budget = 6000.75, remaining_budget = 43999.25, student_count = 2 },
+            new { id = 2, name = "Elektrik-Elektronik Mühendisliği", budget_allocated = 42000.0, used_budget = 2667.00, remaining_budget = 39333.00, student_count = 1 },
+            new { id = 3, name = "Mekatronik Mühendisliği", budget_allocated = 38000.0, used_budget = 1333.50, remaining_budget = 36666.50, student_count = 1 },
+            new { id = 4, name = "Makine Mühendisliği", budget_allocated = 35000.0, used_budget = 0.0, remaining_budget = 35000.00, student_count = 0 },
+            new { id = 5, name = "Metalurji ve Malzeme Mühendisliği", budget_allocated = 28000.0, used_budget = 0.0, remaining_budget = 28000.00, student_count = 0 },
+            new { id = 6, name = "Biyomedikal Mühendisliği", budget_allocated = 25000.0, used_budget = 0.0, remaining_budget = 25000.00, student_count = 0 }
         };
 
         var studentsLeaveTracking = new List<object>
         {
-            new { id = 1, full_name = "Ali Veli", student_no = "20231011", department_name = "Bilgisayar Mühendisliği", total_leave_days = 2, exceeded_limit = false, status = "active" },
-            new { id = 2, full_name = "Fatma Şahin", student_no = "20231012", department_name = "Bilgisayar Mühendisliği", total_leave_days = 11, exceeded_limit = true, status = "active" },
-            new { id = 3, full_name = "Caner Erkin", student_no = "20231013", department_name = "Elektrik-Elektronik Mühendisliği", total_leave_days = 3, exceeded_limit = false, status = "active" }
+            new { id = 1, full_name = "Ennur Pekdemir", student_no = "2210206001", department_name = "Bilgisayar Mühendisliği", total_leave_days = 2, exceeded_limit = false, status = "active" },
+            new { id = 2, full_name = "Ali Veli", student_no = "20231011", department_name = "Bilgisayar Mühendisliği", total_leave_days = 11, exceeded_limit = true, status = "active" },
+            new { id = 3, full_name = "Fatma Şahin", student_no = "20231012", department_name = "Mekatronik Mühendisliği", total_leave_days = 3, exceeded_limit = false, status = "active" },
+            new { id = 4, full_name = "Caner Erkin", student_no = "20231013", department_name = "Elektrik-Elektronik Mühendisliği", total_leave_days = 1, exceeded_limit = false, status = "active" }
         };
 
         return Ok(new
