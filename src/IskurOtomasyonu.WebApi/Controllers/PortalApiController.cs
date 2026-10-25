@@ -36,8 +36,10 @@ public class PortalApiController : ControllerBase
         if (string.IsNullOrEmpty(identifier))
             return BadRequest(new { error = "Kullanıcı bilgisi boş olamaz." });
 
+        var idLower = identifier.ToLowerInvariant();
+
         // Selçuk Üniversitesi Teknoloji Fakültesi Gerçek Yönetici & Akademik Kadro Girişleri
-        if (identifier == "2210206001" || identifier == "20231011" || identifier.Contains("aliveli") || identifier.Contains("ennur"))
+        if (identifier == "2210206001" || identifier == "20231011" || idLower.Contains("aliveli") || idLower.Contains("ennur"))
         {
             return Ok(new
             {
@@ -45,27 +47,27 @@ public class PortalApiController : ControllerBase
                 {
                     id = 1,
                     student_id = 1,
-                    full_name = identifier == "2210206001" || identifier.Contains("ennur") ? "Ennur Pekdemir" : "Ali Veli",
+                    full_name = identifier == "2210206001" || idLower.Contains("ennur") ? "Ennur Pekdemir" : "Ali Veli",
                     role = "student",
-                    student_no = identifier == "2210206001" || identifier.Contains("ennur") ? "2210206001" : "20231011",
+                    student_no = identifier == "2210206001" || idLower.Contains("ennur") ? "2210206001" : "20231011",
                     email = "2210206001@ogr.selcuk.edu.tr"
                 }
             });
         }
-        if (identifier.Contains("stasdemir") || identifier.Contains("ahmet.yilmaz") || identifier.Contains("danisman"))
+        if (idLower.Contains("iaozkan") || idLower.Contains("ahmet.yilmaz") || idLower.Contains("danisman") || idLower.Contains("salan"))
         {
             return Ok(new
             {
                 user = new
                 {
                     id = 2,
-                    full_name = "Prof. Dr. Şakir Taşdemir",
+                    full_name = "Doç. Dr. İlker Ali Özkan",
                     role = "advisor",
-                    email = "stasdemir@selcuk.edu.tr"
+                    email = "iaozkan@selcuk.edu.tr"
                 }
             });
         }
-        if (identifier.Contains("basciftci") || identifier.Contains("bbaskan") || identifier.Contains("baskan"))
+        if (idLower.Contains("basciftci") || idLower.Contains("bbaskan") || idLower.Contains("baskan"))
         {
             return Ok(new
             {
@@ -78,7 +80,7 @@ public class PortalApiController : ControllerBase
                 }
             });
         }
-        if (identifier.Contains("hunal") || identifier.Contains("sekreter"))
+        if (idLower.Contains("hunal") || idLower.Contains("sekreter"))
         {
             return Ok(new
             {
@@ -91,7 +93,7 @@ public class PortalApiController : ControllerBase
                 }
             });
         }
-        if (identifier.Contains("hkahramanli") || identifier.Contains("dekan"))
+        if (idLower.Contains("hkahramanli") || idLower.Contains("dekan"))
         {
             return Ok(new
             {
@@ -148,15 +150,42 @@ public class PortalApiController : ControllerBase
             new { id = 6, name = "Biyomedikal Mühendisliği", head_name = "Doç. Dr. M. Serdar Başçıl", budget_allocated = 25000.0 }
         };
 
-        // Gerçek Öğretim Üyesi Danışmanlar
+        // Fakültenin Tüm Öğretim Elemanları (Tümü Danışman Olabilir)
         var advisors = new List<object>
         {
-            new { id = 2, full_name = "Prof. Dr. Şakir Taşdemir", department_id = 1 },
+            // Bilgisayar Mühendisliği
+            new { id = 2, full_name = "Doç. Dr. İlker Ali Özkan", department_id = 1 },
             new { id = 3, full_name = "Prof. Dr. Fatih Başçiftçi", department_id = 1 },
-            new { id = 7, full_name = "Doç. Dr. İlker Ali Özkan", department_id = 1 },
-            new { id = 8, full_name = "Doç. Dr. Tahir Sağ", department_id = 1 },
-            new { id = 9, full_name = "Prof. Dr. İsmail Sarıtaş", department_id = 2 },
-            new { id = 10, full_name = "Doç. Dr. Ali Yaşar", department_id = 3 }
+            new { id = 7, full_name = "Doç. Dr. Tahir Sağ", department_id = 1 },
+            new { id = 8, full_name = "Dr. Öğr. Üyesi Selahattin Alan", department_id = 1 },
+            new { id = 9, full_name = "Dr. Öğr. Üyesi Züleyha Yılmaz Acar", department_id = 1 },
+            new { id = 10, full_name = "Prof. Dr. Humar Kahramanlı Örnek", department_id = 1 },
+
+            // Elektrik-Elektronik Mühendisliği
+            new { id = 11, full_name = "Prof. Dr. İsmail Sarıtaş", department_id = 2 },
+            new { id = 12, full_name = "Prof. Dr. Mehmet Çunkaş", department_id = 2 },
+            new { id = 13, full_name = "Doç. Dr. Kemal Tütüncü", department_id = 2 },
+            new { id = 14, full_name = "Doç. Dr. Güzin Özmen", department_id = 2 },
+            new { id = 15, full_name = "Dr. Öğr. Üyesi Saliha Çetinkaya", department_id = 2 },
+
+            // Mekatronik Mühendisliği
+            new { id = 16, full_name = "Doç. Dr. Ali Yaşar", department_id = 3 },
+            new { id = 17, full_name = "Doç. Dr. Hüseyin Rıza Börklü", department_id = 3 },
+            new { id = 18, full_name = "Dr. Öğr. Üyesi Nurettin Çek", department_id = 3 },
+
+            // Makine Mühendisliği
+            new { id = 19, full_name = "Prof. Dr. Süleyman Neşeli", department_id = 4 },
+            new { id = 20, full_name = "Prof. Dr. Recep Çalın", department_id = 4 },
+            new { id = 21, full_name = "Prof. Dr. Mahmut Ünaldı", department_id = 4 },
+            new { id = 22, full_name = "Doç. Dr. Şakir Yazman", department_id = 4 },
+
+            // Metalurji ve Malzeme Mühendisliği
+            new { id = 23, full_name = "Prof. Dr. Nurcan Akduran", department_id = 5 },
+            new { id = 24, full_name = "Doç. Dr. Serdar Cengiz", department_id = 5 },
+
+            // Biyomedikal Mühendisliği
+            new { id = 25, full_name = "Doç. Dr. M. Serdar Başçıl", department_id = 6 },
+            new { id = 26, full_name = "Dr. Öğr. Üyesi Onur Koçak", department_id = 6 }
         };
 
         // Kısmi Zamanlı Öğrenci Listesi
@@ -171,7 +200,7 @@ public class PortalApiController : ControllerBase
                 department_name = "Bilgisayar Mühendisliği",
                 unit_name = "Yazılım Laboratuvarı",
                 advisor_id = 2,
-                advisor_name = "Prof. Dr. Şakir Taşdemir",
+                advisor_name = "Doç. Dr. İlker Ali Özkan",
                 daily_wage = 666.75,
                 status = "active",
                 full_class_days = "1,3",
@@ -191,8 +220,8 @@ public class PortalApiController : ControllerBase
                 department_id = 1,
                 department_name = "Bilgisayar Mühendisliği",
                 unit_name = "Bilişim ve Ağ Laboratuvarı",
-                advisor_id = 2,
-                advisor_name = "Prof. Dr. Şakir Taşdemir",
+                advisor_id = 8,
+                advisor_name = "Dr. Öğr. Üyesi Selahattin Alan",
                 daily_wage = 666.75,
                 status = "active",
                 full_class_days = "2",
@@ -212,7 +241,7 @@ public class PortalApiController : ControllerBase
                 department_id = 3,
                 department_name = "Mekatronik Mühendisliği",
                 unit_name = "Robotik ve Otomasyon Atölyesi",
-                advisor_id = 10,
+                advisor_id = 16,
                 advisor_name = "Doç. Dr. Ali Yaşar",
                 daily_wage = 666.75,
                 status = "active",
@@ -233,7 +262,7 @@ public class PortalApiController : ControllerBase
                 department_id = 2,
                 department_name = "Elektrik-Elektronik Mühendisliği",
                 unit_name = "Elektronik Devre Laboratuvarı",
-                advisor_id = 9,
+                advisor_id = 11,
                 advisor_name = "Prof. Dr. İsmail Sarıtaş",
                 daily_wage = 666.75,
                 status = "active",
@@ -266,7 +295,7 @@ public class PortalApiController : ControllerBase
                 department_id = 1,
                 department_name = "Bilgisayar Mühendisliği",
                 title = "Yazılım ve Ağ Laboratuvarı Cihaz Sayımı",
-                content = "Bölümümüz bünyesindeki laboratuvar cihazlarının envanter kontrolü Prof. Dr. Şakir Taşdemir gözetiminde yapılacaktır."
+                content = "Bölümümüz bünyesindeki laboratuvar cihazlarının envanter kontrolü Doç. Dr. İlker Ali Özkan ve Dr. Öğr. Üyesi Selahattin Alan gözetiminde yapılacaktır."
             }
         };
 
@@ -290,7 +319,7 @@ public class PortalApiController : ControllerBase
             full_name = student_id == 1 ? "Ennur Pekdemir" : "Ali Veli",
             department_name = "Bilgisayar Mühendisliği",
             unit_name = student_id == 1 ? "Yazılım Laboratuvarı" : "Bilişim ve Ağ Laboratuvarı",
-            advisor_name = "Prof. Dr. Şakir Taşdemir",
+            advisor_name = student_id == 1 ? "Doç. Dr. İlker Ali Özkan" : "Dr. Öğr. Üyesi Selahattin Alan",
             status = "active",
             full_class_days = student_id == 1 ? "1,3" : "2",
             conflict_days = student_id == 1 ? "5" : ""
@@ -311,8 +340,8 @@ public class PortalApiController : ControllerBase
 
         var tasks = new List<object>
         {
-            new { id = 1, advisor_id = 2, student_id, title = "Yazılım laboratuvarı işletim sistemi imajlarının güncellenmesi", due_date = "2026-10-30", status = "pending", advisor_name = "Prof. Dr. Şakir Taşdemir" },
-            new { id = 2, advisor_id = 2, student_id, title = "Ağ anahtarları port konfigürasyonu ve testleri", due_date = "2026-10-24", status = "completed", advisor_name = "Prof. Dr. Şakir Taşdemir" }
+            new { id = 1, advisor_id = 2, student_id, title = "Yazılım laboratuvarı işletim sistemi imajlarının güncellenmesi", due_date = "2026-10-30", status = "pending", advisor_name = "Doç. Dr. İlker Ali Özkan" },
+            new { id = 2, advisor_id = 2, student_id, title = "Ağ anahtarları port konfigürasyonu ve testleri", due_date = "2026-10-24", status = "completed", advisor_name = "Doç. Dr. İlker Ali Özkan" }
         };
 
         var excuses = new List<object>
@@ -397,9 +426,9 @@ public class PortalApiController : ControllerBase
     {
         var list = new List<object>
         {
-            new { id = 1, advisor_id = 2, student_id = 1, student_name = "Ennur Pekdemir", unit_name = "Yazılım Laboratuvarı", title = "Yazılım laboratuvarı işletim sistemi imajlarının güncellenmesi", due_date = "2026-10-30", status = "pending", advisor_name = "Prof. Dr. Şakir Taşdemir" },
-            new { id = 2, advisor_id = 2, student_id = 1, student_name = "Ennur Pekdemir", unit_name = "Yazılım Laboratuvarı", title = "Ağ anahtarları port konfigürasyonu ve testleri", due_date = "2026-10-24", status = "completed", advisor_name = "Prof. Dr. Şakir Taşdemir" },
-            new { id = 3, advisor_id = 2, student_id = 2, student_name = "Ali Veli", unit_name = "Bilişim ve Ağ Laboratuvarı", title = "Laboratuvar yedekleme sunucusunun kontrolü", due_date = "2026-10-28", status = "pending", advisor_name = "Prof. Dr. Şakir Taşdemir" }
+            new { id = 1, advisor_id = 2, student_id = 1, student_name = "Ennur Pekdemir", unit_name = "Yazılım Laboratuvarı", title = "Yazılım laboratuvarı işletim sistemi imajlarının güncellenmesi", due_date = "2026-10-30", status = "pending", advisor_name = "Doç. Dr. İlker Ali Özkan" },
+            new { id = 2, advisor_id = 2, student_id = 1, student_name = "Ennur Pekdemir", unit_name = "Yazılım Laboratuvarı", title = "Ağ anahtarları port konfigürasyonu ve testleri", due_date = "2026-10-24", status = "completed", advisor_name = "Doç. Dr. İlker Ali Özkan" },
+            new { id = 3, advisor_id = 8, student_id = 2, student_name = "Ali Veli", unit_name = "Bilişim ve Ağ Laboratuvarı", title = "Laboratuvar yedekleme sunucusunun kontrolü", due_date = "2026-10-28", status = "pending", advisor_name = "Dr. Öğr. Üyesi Selahattin Alan" }
         };
         return Ok(list);
     }
@@ -431,7 +460,7 @@ public class PortalApiController : ControllerBase
                 department_name = "Bilgisayar Mühendisliği",
                 unit_name = "Yazılım Laboratuvarı",
                 advisor_id = 2,
-                advisor_name = "Prof. Dr. Şakir Taşdemir",
+                advisor_name = "Doç. Dr. İlker Ali Özkan",
                 daily_wage = 666.75,
                 status = "active",
                 total_leave_days = 2,
@@ -449,8 +478,8 @@ public class PortalApiController : ControllerBase
                 department_id = 1,
                 department_name = "Bilgisayar Mühendisliği",
                 unit_name = "Bilişim ve Ağ Laboratuvarı",
-                advisor_id = 2,
-                advisor_name = "Prof. Dr. Şakir Taşdemir",
+                advisor_id = 8,
+                advisor_name = "Dr. Öğr. Üyesi Selahattin Alan",
                 daily_wage = 666.75,
                 status = "active",
                 total_leave_days = 11,
@@ -468,7 +497,7 @@ public class PortalApiController : ControllerBase
                 department_id = 3,
                 department_name = "Mekatronik Mühendisliği",
                 unit_name = "Robotik ve Otomasyon Atölyesi",
-                advisor_id = 10,
+                advisor_id = 16,
                 advisor_name = "Doç. Dr. Ali Yaşar",
                 daily_wage = 666.75,
                 status = "active",
@@ -487,7 +516,7 @@ public class PortalApiController : ControllerBase
                 department_id = 2,
                 department_name = "Elektrik-Elektronik Mühendisliği",
                 unit_name = "Elektronik Devre Laboratuvarı",
-                advisor_id = 9,
+                advisor_id = 11,
                 advisor_name = "Prof. Dr. İsmail Sarıtaş",
                 daily_wage = 666.75,
                 status = "active",
@@ -543,7 +572,7 @@ public class PortalApiController : ControllerBase
                 department_id = 1,
                 department_name = "Bilgisayar Mühendisliği",
                 title = "Yazılım ve Ağ Laboratuvarı Cihaz Sayımı",
-                content = "Bölümümüz bünyesindeki laboratuvar cihazlarının envanter kontrolü Prof. Dr. Şakir Taşdemir gözetiminde yapılacaktır."
+                content = "Bölümümüz bünyesindeki laboratuvar cihazlarının envanter kontrolü Doç. Dr. İlker Ali Özkan ve Dr. Öğr. Üyesi Selahattin Alan gözetiminde yapılacaktır."
             }
         };
         return Ok(announcements);
@@ -574,7 +603,7 @@ public class PortalApiController : ControllerBase
                 student_name = "Ennur Pekdemir",
                 student_no = "2210206001",
                 unit_name = "Yazılım Laboratuvarı",
-                advisor_name = "Prof. Dr. Şakir Taşdemir",
+                advisor_name = "Doç. Dr. İlker Ali Özkan",
                 excuse_date = "2026-10-20",
                 reason = "Vize sınavı çakışması",
                 status = "approved"
@@ -586,7 +615,7 @@ public class PortalApiController : ControllerBase
                 student_name = "Ali Veli",
                 student_no = "20231011",
                 unit_name = "Bilişim ve Ağ Laboratuvarı",
-                advisor_name = "Prof. Dr. Şakir Taşdemir",
+                advisor_name = "Dr. Öğr. Üyesi Selahattin Alan",
                 excuse_date = "2026-10-26",
                 reason = "Sağlık raporu",
                 status = "pending"

@@ -494,7 +494,7 @@ namespace IskurOtomasyonu.Infrastructure.Migrations
                         {
                             Id = new Guid("11111111-1111-1111-1111-111111111111"),
                             ConcurrencyStamp = "role-stamp-dekanlik",
-                            CreatedAt = new DateTime(2026, 10, 21, 12, 5, 57, 705, DateTimeKind.Utc).AddTicks(61),
+                            CreatedAt = new DateTime(2026, 10, 25, 22, 0, 59, 831, DateTimeKind.Utc).AddTicks(6699),
                             Description = "Teknoloji Fakültesi Dekanlık ve Yönetici Rolü",
                             IsSystemRole = true,
                             Name = "Dekanlik",
@@ -504,7 +504,7 @@ namespace IskurOtomasyonu.Infrastructure.Migrations
                         {
                             Id = new Guid("22222222-2222-2222-2222-222222222222"),
                             ConcurrencyStamp = "role-stamp-bolumbaskani",
-                            CreatedAt = new DateTime(2026, 10, 21, 12, 5, 57, 705, DateTimeKind.Utc).AddTicks(1262),
+                            CreatedAt = new DateTime(2026, 10, 25, 22, 0, 59, 831, DateTimeKind.Utc).AddTicks(7557),
                             Description = "Akademik Bölüm Başkanı Rolü",
                             IsSystemRole = true,
                             Name = "BolumBaskani",
@@ -514,7 +514,7 @@ namespace IskurOtomasyonu.Infrastructure.Migrations
                         {
                             Id = new Guid("33333333-3333-3333-3333-333333333333"),
                             ConcurrencyStamp = "role-stamp-danisman",
-                            CreatedAt = new DateTime(2026, 10, 21, 12, 5, 57, 705, DateTimeKind.Utc).AddTicks(1266),
+                            CreatedAt = new DateTime(2026, 10, 25, 22, 0, 59, 831, DateTimeKind.Utc).AddTicks(7559),
                             Description = "Öğrenci Akademik ve İŞKUR Danışmanı Rolü",
                             IsSystemRole = true,
                             Name = "Danisman",
@@ -524,7 +524,7 @@ namespace IskurOtomasyonu.Infrastructure.Migrations
                         {
                             Id = new Guid("44444444-4444-4444-4444-444444444444"),
                             ConcurrencyStamp = "role-stamp-ogrenci",
-                            CreatedAt = new DateTime(2026, 10, 21, 12, 5, 57, 705, DateTimeKind.Utc).AddTicks(1268),
+                            CreatedAt = new DateTime(2026, 10, 25, 22, 0, 59, 831, DateTimeKind.Utc).AddTicks(7562),
                             Description = "İŞKUR Kapsamında Görev Alan Öğrenci Rolü",
                             IsSystemRole = true,
                             Name = "Ogrenci",
@@ -914,6 +914,63 @@ namespace IskurOtomasyonu.Infrastructure.Migrations
                     b.HasIndex("ExpiresAt", "IsActive");
 
                     b.ToTable("QrSessions", (string)null);
+                });
+
+            modelBuilder.Entity("IskurOtomasyonu.Domain.Entities.Workflow.Announcement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsUrgent")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("DepartmentId");
+
+                    b.ToTable("Announcements");
                 });
 
             modelBuilder.Entity("IskurOtomasyonu.Domain.Entities.Workflow.LeaveRequest", b =>
@@ -1330,6 +1387,23 @@ namespace IskurOtomasyonu.Infrastructure.Migrations
                     b.Navigation("CreatedByUser");
 
                     b.Navigation("Unit");
+                });
+
+            modelBuilder.Entity("IskurOtomasyonu.Domain.Entities.Workflow.Announcement", b =>
+                {
+                    b.HasOne("IskurOtomasyonu.Domain.Entities.Identity.ApplicationUser", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("IskurOtomasyonu.Domain.Entities.Academic.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId");
+
+                    b.Navigation("CreatedByUser");
+
+                    b.Navigation("Department");
                 });
 
             modelBuilder.Entity("IskurOtomasyonu.Domain.Entities.Workflow.LeaveRequest", b =>

@@ -14,7 +14,7 @@ const PUBLIC_DIR = fs.existsSync(path.join(__dirname, 'src', 'IskurOtomasyonu.We
 const db = {
   users: [
     { id: 1, student_id: 1, full_name: 'Ennur Pekdemir', role: 'student', student_no: '2210206001', email: '2210206001@ogr.selcuk.edu.tr', password: '123456' },
-    { id: 2, full_name: 'Prof. Dr. Şakir Taşdemir', role: 'advisor', email: 'stasdemir@selcuk.edu.tr', password: '123456' },
+    { id: 2, full_name: 'Doç. Dr. İlker Ali Özkan', role: 'advisor', email: 'iaozkan@selcuk.edu.tr', password: '123456' },
     { id: 3, full_name: 'Prof. Dr. Fatih Başçiftçi', role: 'head', email: 'basciftci@selcuk.edu.tr', password: '123456' },
     { id: 4, full_name: 'Hasan Ünal', role: 'secretary', email: 'hunal@selcuk.edu.tr', password: '123456' },
     { id: 5, full_name: 'Prof. Dr. Humar Kahramanlı Örnek', role: 'dean', email: 'hkahramanli@selcuk.edu.tr', password: '123456' }
@@ -28,12 +28,15 @@ const db = {
     { id: 6, name: 'Biyomedikal Mühendisliği', head_name: 'Doç. Dr. M. Serdar Başçıl', budget_allocated: 25000 }
   ],
   advisors: [
-    { id: 2, full_name: 'Prof. Dr. Şakir Taşdemir', department_id: 1 },
+    { id: 2, full_name: 'Doç. Dr. İlker Ali Özkan', department_id: 1 },
     { id: 3, full_name: 'Prof. Dr. Fatih Başçiftçi', department_id: 1 },
-    { id: 7, full_name: 'Doç. Dr. İlker Ali Özkan', department_id: 1 },
-    { id: 8, full_name: 'Doç. Dr. Tahir Sağ', department_id: 1 },
+    { id: 7, full_name: 'Doç. Dr. Tahir Sağ', department_id: 1 },
+    { id: 8, full_name: 'Dr. Öğr. Üyesi Selahattin Alan', department_id: 1 },
     { id: 9, full_name: 'Prof. Dr. İsmail Sarıtaş', department_id: 2 },
-    { id: 10, full_name: 'Doç. Dr. Ali Yaşar', department_id: 3 }
+    { id: 10, full_name: 'Doç. Dr. Ali Yaşar', department_id: 3 },
+    { id: 11, full_name: 'Prof. Dr. Süleyman Neşeli', department_id: 4 },
+    { id: 12, full_name: 'Prof. Dr. Nurcan Akduran', department_id: 5 },
+    { id: 13, full_name: 'Doç. Dr. M. Serdar Başçıl', department_id: 6 }
   ],
   students: [
     {
@@ -104,7 +107,7 @@ const db = {
       department_id: 1,
       department_name: 'Bilgisayar Mühendisliği',
       title: 'Yazılım ve Ağ Laboratuvarı Cihaz Sayımı',
-      content: 'Bölümümüz bünyesindeki laboratuvar cihazlarının envanter kontrolü Prof. Dr. Şakir Taşdemir gözetiminde yapılacaktır.'
+      content: 'Bölümümüz bünyesindeki laboratuvar cihazlarının envanter kontrolü Doç. Dr. İlker Ali Özkan gözetiminde yapılacaktır.'
     }
   ],
   tasks: [
@@ -261,7 +264,7 @@ const server = http.createServer(async (req, res) => {
 
     if (!user) {
       if (idClean.includes('ennur') || idClean === '2210206001') user = db.users[0];
-      else if (idClean.includes('stasdemir') || idClean.includes('danisman')) user = db.users[1];
+      else if (idClean.includes('iaozkan') || idClean.includes('ozkan') || idClean.includes('danisman')) user = db.users[1];
       else if (idClean.includes('basciftci') || idClean.includes('baskan')) user = db.users[2];
       else if (idClean.includes('hunal') || idClean.includes('sekreter')) user = db.users[3];
       else if (idClean.includes('hkahramanli') || idClean.includes('dekan')) user = db.users[4];

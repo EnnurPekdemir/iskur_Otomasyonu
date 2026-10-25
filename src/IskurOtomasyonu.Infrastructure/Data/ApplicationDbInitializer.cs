@@ -29,21 +29,33 @@ public static class ApplicationDbInitializer
         // 1. Veritabanı Şemasını Garantiye Al
         try
         {
-            await context.Database.MigrateAsync();
-            logger.LogInformation("MigrateAsync başarıyla tamamlandı.");
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'Announcements')
+                BEGIN
+                    CREATE TABLE [Announcements] (
+                        [Id] uniqueidentifier NOT NULL,
+                        [Title] nvarchar(max) NOT NULL,
+                        [Content] nvarchar(max) NOT NULL,
+                        [Category] nvarchar(max) NOT NULL,
+                        [IsUrgent] bit NOT NULL,
+                        [CreatedByUserId] uniqueidentifier NOT NULL,
+                        [DepartmentId] uniqueidentifier NULL,
+                        [CreatedAt] datetime2 NOT NULL,
+                        [CreatedBy] uniqueidentifier NULL,
+                        [UpdatedAt] datetime2 NULL,
+                        [UpdatedBy] uniqueidentifier NULL,
+                        [IsDeleted] bit NOT NULL,
+                        [DeletedAt] datetime2 NULL,
+                        [DeletedBy] uniqueidentifier NULL,
+                        CONSTRAINT [PK_Announcements] PRIMARY KEY ([Id])
+                    );
+                END
+            ");
+            logger.LogInformation("MSSQL Announcements tablosu doğrulandı.");
         }
         catch (Exception ex)
         {
-            logger.LogWarning("MigrateAsync çalıştırılamadı ({Message}), EnsureCreatedAsync deneniyor...", ex.Message);
-            try
-            {
-                await context.Database.EnsureCreatedAsync();
-                logger.LogInformation("EnsureCreatedAsync ile veritabanı şeması oluşturuldu.");
-            }
-            catch (Exception innerEx)
-            {
-                logger.LogError(innerEx, "EnsureCreatedAsync hatası: {Message}", innerEx.Message);
-            }
+            logger.LogWarning("SQL şema kontrolü: {Message}", ex.Message);
         }
 
         // 2. Rolleri Kontrol Et / Oluştur
@@ -129,7 +141,7 @@ public static class ApplicationDbInitializer
         // 5. Demo Kullanıcıları Kontrol Et / Oluştur
         try
         {
-            // A) Dekanlık - Prof. Dr. Abdullah Engin ÖZÇELİK
+            // A) Dekanlık - Prof. Dr. Humar KAHRAMANLI ÖRNEK
             var dekanUser = await userManager.FindByEmailAsync("dekanlik@tf.edu.tr");
             if (dekanUser == null)
             {
@@ -137,8 +149,8 @@ public static class ApplicationDbInitializer
                 {
                     UserName = "dekanlik@tf.edu.tr",
                     Email = "dekanlik@tf.edu.tr",
-                    FirstName = "Abdullah Engin",
-                    LastName = "Özçelik",
+                    FirstName = "Humar",
+                    LastName = "Kahramanlı Örnek",
                     AcademicTitle = "Prof. Dr. (Dekan)",
                     PhoneNumber = "03322233300",
                     EmailConfirmed = true,
@@ -153,8 +165,8 @@ public static class ApplicationDbInitializer
             }
             else
             {
-                dekanUser.FirstName = "Abdullah Engin";
-                dekanUser.LastName = "Özçelik";
+                dekanUser.FirstName = "Humar";
+                dekanUser.LastName = "Kahramanlı Örnek";
                 dekanUser.AcademicTitle = "Prof. Dr. (Dekan)";
                 await userManager.UpdateAsync(dekanUser);
             }
@@ -194,7 +206,7 @@ public static class ApplicationDbInitializer
                 await userManager.UpdateAsync(baskanUser);
             }
 
-            // C) Danışman - Prof. Dr. Şakir TAŞDEMİR
+            // C) Danışman - Doç. Dr. İlker Ali ÖZKAN
             var danismanUser = await userManager.FindByEmailAsync("danisman@tf.edu.tr");
             if (danismanUser == null)
             {
@@ -202,9 +214,9 @@ public static class ApplicationDbInitializer
                 {
                     UserName = "danisman@tf.edu.tr",
                     Email = "danisman@tf.edu.tr",
-                    FirstName = "Şakir",
-                    LastName = "Taşdemir",
-                    AcademicTitle = "Prof. Dr.",
+                    FirstName = "İlker Ali",
+                    LastName = "Özkan",
+                    AcademicTitle = "Doç. Dr.",
                     PhoneNumber = "03322233320",
                     EmailConfirmed = true,
                     IsActive = true
@@ -218,23 +230,46 @@ public static class ApplicationDbInitializer
             }
             else
             {
-                danismanUser.FirstName = "Şakir";
-                danismanUser.LastName = "Taşdemir";
-                danismanUser.AcademicTitle = "Prof. Dr.";
+                danismanUser.FirstName = "İlker Ali";
+                danismanUser.LastName = "Özkan";
+                danismanUser.AcademicTitle = "Doç. Dr.";
                 await userManager.UpdateAsync(danismanUser);
             }
 
             // C2) Selçuk Teknoloji Fakültesi Diğer Gerçek Akademik Kadro
             var facultyMembers = new List<(string Email, string FirstName, string LastName, string Title, string Phone)>
             {
-                ("hkahramanli@tf.edu.tr", "Humar", "Kahramanlı Örnek", "Prof. Dr.", "03322233321"),
-                ("zuleyha@tf.edu.tr", "Züleyha", "Yılmaz Acar", "Prof. Dr.", "03322233322"),
+                // Bilgisayar Mühendisliği
+                ("salan@tf.edu.tr", "Selahattin", "Alan", "Dr. Öğr. Üyesi", "03322233336"),
+                ("zuleyha@tf.edu.tr", "Züleyha", "Yılmaz Acar", "Dr. Öğr. Üyesi", "03322233322"),
+                ("tsag@tf.edu.tr", "Tahir", "Sağ", "Doç. Dr.", "03322233327"),
                 ("iaozkan@tf.edu.tr", "İlker Ali", "Özkan", "Doç. Dr.", "03322233323"),
+
+                // Elektrik-Elektronik Mühendisliği
                 ("isaritas@tf.edu.tr", "İsmail", "Sarıtaş", "Prof. Dr.", "03322233324"),
                 ("mcunkas@tf.edu.tr", "Mehmet", "Çunkaş", "Prof. Dr.", "03322233325"),
+                ("ktutuncu@tf.edu.tr", "Kemal", "Tütüncü", "Doç. Dr.", "03322233328"),
+                ("gozmen@tf.edu.tr", "Güzin", "Özmen", "Doç. Dr.", "03322233329"),
+                ("scetinkaya@tf.edu.tr", "Saliha", "Çetinkaya", "Dr. Öğr. Üyesi", "03322233330"),
+
+                // Mekatronik Mühendisliği
                 ("ayasar@tf.edu.tr", "Ali", "Yaşar", "Doç. Dr.", "03322233326"),
-                ("tsag@tf.edu.tr", "Tahir", "Sağ", "Doç. Dr.", "03322233327"),
-                ("ktutuncu@tf.edu.tr", "Kemal", "Tütüncü", "Doç. Dr.", "03322233328")
+                ("hborklu@tf.edu.tr", "Hüseyin Rıza", "Börklü", "Doç. Dr.", "03322233331"),
+                ("ncek@tf.edu.tr", "Nurettin", "Çek", "Dr. Öğr. Üyesi", "03322233332"),
+
+                // Makine Mühendisliği
+                ("sneseli@tf.edu.tr", "Süleyman", "Neşeli", "Prof. Dr.", "03322233333"),
+                ("rcalin@tf.edu.tr", "Recep", "Çalın", "Prof. Dr.", "03322233334"),
+                ("munaldi@tf.edu.tr", "Mahmut", "Ünaldı", "Prof. Dr.", "03322233335"),
+                ("syazman@tf.edu.tr", "Şakir", "Yazman", "Doç. Dr.", "03322233337"),
+
+                // Metalurji ve Malzeme Mühendisliği
+                ("nakduran@tf.edu.tr", "Nurcan", "Akduran", "Prof. Dr.", "03322233338"),
+                ("scengiz@tf.edu.tr", "Serdar", "Cengiz", "Doç. Dr.", "03322233339"),
+
+                // Biyomedikal Mühendisliği
+                ("mbascil@tf.edu.tr", "Muhammet Serdar", "Başçıl", "Doç. Dr.", "03322233340"),
+                ("okocak@tf.edu.tr", "Onur", "Koçak", "Dr. Öğr. Üyesi", "03322233341")
             };
 
             foreach (var prof in facultyMembers)
@@ -392,17 +427,17 @@ public static class ApplicationDbInitializer
             }
 
             // E) Fakülte Sekreteri (İŞKUR Yönetim Merkezi)
-            var sekreterUser = await userManager.FindByEmailAsync("sekreter@tf.edu.tr");
+            var sekreterUser = await userManager.FindByEmailAsync("sekreter@tf.edu.tr") ?? await userManager.FindByEmailAsync("hunal@tf.edu.tr");
             if (sekreterUser == null)
             {
                 sekreterUser = new ApplicationUser
                 {
                     UserName = "sekreter@tf.edu.tr",
                     Email = "sekreter@tf.edu.tr",
-                    FirstName = "Murat",
-                    LastName = "Kaya",
+                    FirstName = "Hasan",
+                    LastName = "Ünal",
                     AcademicTitle = "Fakülte Sekreteri",
-                    PhoneNumber = "05325556677",
+                    PhoneNumber = "03322233310",
                     EmailConfirmed = true,
                     IsActive = true
                 };
@@ -410,12 +445,19 @@ public static class ApplicationDbInitializer
                 if (createResult.Succeeded)
                 {
                     await userManager.AddToRoleAsync(sekreterUser, AppRoles.FakulteSekreteri);
-                    logger.LogInformation("Fakülte Sekreteri kullanıcısı oluşturuldu.");
+                    logger.LogInformation("Fakülte Sekreteri (Hasan Ünal) kullanıcısı oluşturuldu.");
                 }
                 else
                 {
                     logger.LogError("Fakülte Sekreteri oluşturulamadı: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
                 }
+            }
+            else
+            {
+                sekreterUser.FirstName = "Hasan";
+                sekreterUser.LastName = "Ünal";
+                sekreterUser.AcademicTitle = "Fakülte Sekreteri";
+                await userManager.UpdateAsync(sekreterUser);
             }
         }
         catch (Exception ex)

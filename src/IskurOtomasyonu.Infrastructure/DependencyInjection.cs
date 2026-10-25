@@ -36,6 +36,7 @@ public static class DependencyInjection
                     maxRetryDelay: TimeSpan.FromSeconds(30),
                     errorNumbersToAdd: null);
             });
+            options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         });
 
         // 3. IApplicationDbContext Arayüz Bağlantısı
