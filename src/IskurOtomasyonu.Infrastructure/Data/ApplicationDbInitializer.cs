@@ -49,7 +49,7 @@ public static class ApplicationDbInitializer
         // 2. Rolleri Kontrol Et / Oluştur
         try
         {
-            string[] roles = [AppRoles.Dekanlik, AppRoles.BolumBaskani, AppRoles.Danisman, AppRoles.Ogrenci];
+            string[] roles = [AppRoles.Dekanlik, AppRoles.BolumBaskani, AppRoles.Danisman, AppRoles.Ogrenci, AppRoles.FakulteSekreteri];
             foreach (var role in roles)
             {
                 if (!await roleManager.RoleExistsAsync(role))
@@ -129,7 +129,7 @@ public static class ApplicationDbInitializer
         // 5. Demo Kullanıcıları Kontrol Et / Oluştur
         try
         {
-            // A) Dekanlık
+            // A) Dekanlık - Prof. Dr. Abdullah Engin ÖZÇELİK
             var dekanUser = await userManager.FindByEmailAsync("dekanlik@tf.edu.tr");
             if (dekanUser == null)
             {
@@ -137,10 +137,10 @@ public static class ApplicationDbInitializer
                 {
                     UserName = "dekanlik@tf.edu.tr",
                     Email = "dekanlik@tf.edu.tr",
-                    FirstName = "Metin",
-                    LastName = "Kaya",
+                    FirstName = "Abdullah Engin",
+                    LastName = "Özçelik",
                     AcademicTitle = "Prof. Dr. (Dekan)",
-                    PhoneNumber = "05321112233",
+                    PhoneNumber = "03322233300",
                     EmailConfirmed = true,
                     IsActive = true
                 };
@@ -150,13 +150,16 @@ public static class ApplicationDbInitializer
                     await userManager.AddToRoleAsync(dekanUser, AppRoles.Dekanlik);
                     logger.LogInformation("Dekanlık kullanıcısı oluşturuldu.");
                 }
-                else
-                {
-                    logger.LogError("Dekanlık oluşturulamadı: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
-                }
+            }
+            else
+            {
+                dekanUser.FirstName = "Abdullah Engin";
+                dekanUser.LastName = "Özçelik";
+                dekanUser.AcademicTitle = "Prof. Dr. (Dekan)";
+                await userManager.UpdateAsync(dekanUser);
             }
 
-            // B) Bölüm Başkanı
+            // B) Bölüm Başkanı - Prof. Dr. Fatih BAŞÇİFTÇİ
             var baskanUser = await userManager.FindByEmailAsync("bm_baskan@tf.edu.tr");
             if (baskanUser == null)
             {
@@ -164,10 +167,10 @@ public static class ApplicationDbInitializer
                 {
                     UserName = "bm_baskan@tf.edu.tr",
                     Email = "bm_baskan@tf.edu.tr",
-                    FirstName = "Kemal",
-                    LastName = "Demir",
+                    FirstName = "Fatih",
+                    LastName = "Başçiftçi",
                     AcademicTitle = "Prof. Dr. (Bölüm Başkanı)",
-                    PhoneNumber = "05322223344",
+                    PhoneNumber = "03322233310",
                     EmailConfirmed = true,
                     IsActive = true
                 };
@@ -182,13 +185,16 @@ public static class ApplicationDbInitializer
                     }
                     logger.LogInformation("Bölüm Başkanı kullanıcısı oluşturuldu.");
                 }
-                else
-                {
-                    logger.LogError("Bölüm Başkanı oluşturulamadı: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
-                }
+            }
+            else
+            {
+                baskanUser.FirstName = "Fatih";
+                baskanUser.LastName = "Başçiftçi";
+                baskanUser.AcademicTitle = "Prof. Dr. (Bölüm Başkanı)";
+                await userManager.UpdateAsync(baskanUser);
             }
 
-            // C) Danışman
+            // C) Danışman - Prof. Dr. Şakir TAŞDEMİR
             var danismanUser = await userManager.FindByEmailAsync("danisman@tf.edu.tr");
             if (danismanUser == null)
             {
@@ -196,10 +202,10 @@ public static class ApplicationDbInitializer
                 {
                     UserName = "danisman@tf.edu.tr",
                     Email = "danisman@tf.edu.tr",
-                    FirstName = "Ayşe",
-                    LastName = "Yıldız",
-                    AcademicTitle = "Doç. Dr. (Danışman)",
-                    PhoneNumber = "05323334455",
+                    FirstName = "Şakir",
+                    LastName = "Taşdemir",
+                    AcademicTitle = "Prof. Dr.",
+                    PhoneNumber = "03322233320",
                     EmailConfirmed = true,
                     IsActive = true
                 };
@@ -209,9 +215,56 @@ public static class ApplicationDbInitializer
                     await userManager.AddToRoleAsync(danismanUser, AppRoles.Danisman);
                     logger.LogInformation("Danışman kullanıcısı oluşturuldu.");
                 }
+            }
+            else
+            {
+                danismanUser.FirstName = "Şakir";
+                danismanUser.LastName = "Taşdemir";
+                danismanUser.AcademicTitle = "Prof. Dr.";
+                await userManager.UpdateAsync(danismanUser);
+            }
+
+            // C2) Selçuk Teknoloji Fakültesi Diğer Gerçek Akademik Kadro
+            var facultyMembers = new List<(string Email, string FirstName, string LastName, string Title, string Phone)>
+            {
+                ("hkahramanli@tf.edu.tr", "Humar", "Kahramanlı Örnek", "Prof. Dr.", "03322233321"),
+                ("zuleyha@tf.edu.tr", "Züleyha", "Yılmaz Acar", "Prof. Dr.", "03322233322"),
+                ("iaozkan@tf.edu.tr", "İlker Ali", "Özkan", "Doç. Dr.", "03322233323"),
+                ("isaritas@tf.edu.tr", "İsmail", "Sarıtaş", "Prof. Dr.", "03322233324"),
+                ("mcunkas@tf.edu.tr", "Mehmet", "Çunkaş", "Prof. Dr.", "03322233325"),
+                ("ayasar@tf.edu.tr", "Ali", "Yaşar", "Doç. Dr.", "03322233326"),
+                ("tsag@tf.edu.tr", "Tahir", "Sağ", "Doç. Dr.", "03322233327"),
+                ("ktutuncu@tf.edu.tr", "Kemal", "Tütüncü", "Doç. Dr.", "03322233328")
+            };
+
+            foreach (var prof in facultyMembers)
+            {
+                var existingProf = await userManager.FindByEmailAsync(prof.Email);
+                if (existingProf == null)
+                {
+                    var newProf = new ApplicationUser
+                    {
+                        UserName = prof.Email,
+                        Email = prof.Email,
+                        FirstName = prof.FirstName,
+                        LastName = prof.LastName,
+                        AcademicTitle = prof.Title,
+                        PhoneNumber = prof.Phone,
+                        EmailConfirmed = true,
+                        IsActive = true
+                    };
+                    var pRes = await userManager.CreateAsync(newProf, "Hoca123!");
+                    if (pRes.Succeeded)
+                    {
+                        await userManager.AddToRoleAsync(newProf, AppRoles.Danisman);
+                    }
+                }
                 else
                 {
-                    logger.LogError("Danışman oluşturulamadı: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                    existingProf.FirstName = prof.FirstName;
+                    existingProf.LastName = prof.LastName;
+                    existingProf.AcademicTitle = prof.Title;
+                    await userManager.UpdateAsync(existingProf);
                 }
             }
 
@@ -337,10 +390,73 @@ public static class ApplicationDbInitializer
                     logger.LogError("Öğrenci oluşturulamadı: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
                 }
             }
+
+            // E) Fakülte Sekreteri (İŞKUR Yönetim Merkezi)
+            var sekreterUser = await userManager.FindByEmailAsync("sekreter@tf.edu.tr");
+            if (sekreterUser == null)
+            {
+                sekreterUser = new ApplicationUser
+                {
+                    UserName = "sekreter@tf.edu.tr",
+                    Email = "sekreter@tf.edu.tr",
+                    FirstName = "Murat",
+                    LastName = "Kaya",
+                    AcademicTitle = "Fakülte Sekreteri",
+                    PhoneNumber = "05325556677",
+                    EmailConfirmed = true,
+                    IsActive = true
+                };
+                var createResult = await userManager.CreateAsync(sekreterUser, "Sekreter123!");
+                if (createResult.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(sekreterUser, AppRoles.FakulteSekreteri);
+                    logger.LogInformation("Fakülte Sekreteri kullanıcısı oluşturuldu.");
+                }
+                else
+                {
+                    logger.LogError("Fakülte Sekreteri oluşturulamadı: {Errors}", string.Join(", ", createResult.Errors.Select(e => e.Description)));
+                }
+            }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Kullanıcılar oluşturulurken hata: {Message}", ex.Message);
+        }
+
+        // 6. Başlangıç Duyurularını Kontrol Et / Oluştur
+        try
+        {
+            if (!await context.Announcements.AnyAsync())
+            {
+                var adminUser = await userManager.FindByEmailAsync("bm_baskan@tf.edu.tr");
+                var announcements = new List<Announcement>
+                {
+                    new()
+                    {
+                        Title = "2026 Bahar Dönemi İŞKUR Çalışma Esasları ve Devam Hatırlatması",
+                        Content = "Öğrencilerimizin haftalık en fazla 3 gün ve günlük 5 saat sınırına titizlikle uymaları, mesai giriş ve çıkışlarında dinamik QR kodlarını onaylatmaları zorunludur.",
+                        Category = "İŞKUR",
+                        IsUrgent = true,
+                        CreatedByUserId = adminUser?.Id ?? Guid.Empty,
+                        DepartmentId = bmDept?.Id
+                    },
+                    new()
+                    {
+                        Title = "Mazeret İzin Talepleri Hakkında Bilgilendirme",
+                        Content = "Çalışamayacağınız günler için sistem üzerinden mazeret talebi oluşturabilirsiniz. Yıllık toplam yasal izin hakkı 10 gündür.",
+                        Category = "Mazeret",
+                        IsUrgent = false,
+                        CreatedByUserId = adminUser?.Id ?? Guid.Empty
+                    }
+                };
+                await context.Announcements.AddRangeAsync(announcements);
+                await context.SaveChangesAsync();
+                logger.LogInformation("Başlangıç duyuruları oluşturuldu.");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Duyurular oluşturulurken hata: {Message}", ex.Message);
         }
 
         logger.LogInformation("Veritabanı başlatma ve tohumlama süreci tamamlandı.");

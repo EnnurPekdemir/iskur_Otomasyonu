@@ -7,6 +7,7 @@ using IskurOtomasyonu.Application.Common.Models;
 using IskurOtomasyonu.Domain.Entities.Academic;
 using IskurOtomasyonu.Domain.Entities.Assignments;
 using IskurOtomasyonu.Domain.Entities.Identity;
+using IskurOtomasyonu.Domain.Entities.Workflow;
 using IskurOtomasyonu.Domain.Enums;
 
 namespace IskurOtomasyonu.WebApi.Controllers;
@@ -151,7 +152,7 @@ public class AcademicController : ApiControllerBase
     /// Bölüm Başkanı veya Dekanlık için bölüme ait İŞKUR öğrencilerini listeler.
     /// </summary>
     [HttpGet("department-students")]
-    [Authorize(Roles = $"{AppRoles.BolumBaskani},{AppRoles.Dekanlik}")]
+    [Authorize(Roles = $"{AppRoles.BolumBaskani},{AppRoles.Dekanlik},{AppRoles.FakulteSekreteri}")]
     public async Task<ActionResult<ApiResponse<List<object>>>> GetDepartmentStudents(
         [FromQuery] Guid? departmentId, 
         CancellationToken ct)
@@ -213,7 +214,7 @@ public class AcademicController : ApiControllerBase
     /// Dekanlık paneli için fakülte genelindeki tüm öğrencileri listeler.
     /// </summary>
     [HttpGet("all-students")]
-    [Authorize(Roles = AppRoles.Dekanlik)]
+    [Authorize(Roles = $"{AppRoles.Dekanlik},{AppRoles.FakulteSekreteri}")]
     public async Task<ActionResult<ApiResponse<List<object>>>> GetAllStudents(CancellationToken ct)
     {
         var students = await _context.Students
@@ -257,7 +258,7 @@ public class AcademicController : ApiControllerBase
     /// Öğrenciye danışman atar veya mevcut danışmanını günceller (Tarihçeli kayıt).
     /// </summary>
     [HttpPost("assign-advisor")]
-    [Authorize(Roles = $"{AppRoles.BolumBaskani},{AppRoles.Dekanlik}")]
+    [Authorize(Roles = $"{AppRoles.BolumBaskani},{AppRoles.Dekanlik},{AppRoles.FakulteSekreteri}")]
     public async Task<ActionResult<ApiResponse<bool>>> AssignAdvisor(
         [FromBody] AssignAdvisorDto request, 
         CancellationToken ct)
@@ -299,7 +300,7 @@ public class AcademicController : ApiControllerBase
     /// Öğrenciye fakülte birimi atar veya birimini günceller (Dekanlık).
     /// </summary>
     [HttpPost("assign-unit")]
-    [Authorize(Roles = AppRoles.Dekanlik)]
+    [Authorize(Roles = $"{AppRoles.Dekanlik},{AppRoles.FakulteSekreteri}")]
     public async Task<ActionResult<ApiResponse<bool>>> AssignUnit(
         [FromBody] AssignUnitDto request, 
         CancellationToken ct)
@@ -341,7 +342,7 @@ public class AcademicController : ApiControllerBase
     /// Öğrencinin aktiflik durumunu günceller (Onaylama, Pasife alma, Mezun etme vb.).
     /// </summary>
     [HttpPost("update-student-status")]
-    [Authorize(Roles = $"{AppRoles.Dekanlik},{AppRoles.BolumBaskani}")]
+    [Authorize(Roles = $"{AppRoles.Dekanlik},{AppRoles.BolumBaskani},{AppRoles.FakulteSekreteri}")]
     public async Task<ActionResult<ApiResponse<bool>>> UpdateStudentStatus(
         [FromBody] UpdateStudentStatusDto request, 
         CancellationToken ct)
@@ -427,8 +428,128 @@ public class AcademicController : ApiControllerBase
 
         return Ok(ApiResponse<object>.SuccessResult(profile, "Profil bilgileri getirildi."));
     }
+
+    /// <summary>
+    /// Fakülte geneli veya bölüme ait tüm duyuruları listeler.
+    /// </summary>
+    [HttpGet("announcements")]
+    public async Task<ActionResult<ApiResponse<List<object>>>> GetAnnouncements(
+        [FromQuery] Guid? departmentId,
+        CancellationToken ct)
+    {
+        var query = _context.Announcements
+            .Include(a => a.CreatedByUser)
+            .Include(a => a.Department)
+            .AsNoTracking();
+
+        if (departmentId.HasValue && departmentId.Value != Guid.Empty)
+        {
+            query = query.Where(a => a.DepartmentId == null || a.DepartmentId == departmentId.Value);
+        }
+
+        var list = await query
+            .OrderByDescending(a => a.IsUrgent)
+            .ThenByDescending(a => a.CreatedAt)
+            .Select(a => new
+            {
+                a.Id,
+                a.Title,
+                a.Content,
+                a.Category,
+                a.IsUrgent,
+                a.DepartmentId,
+                DepartmentName = a.Department != null ? a.Department.Name : "Fakülte Geneli",
+                CreatedByName = a.CreatedByUser != null ? $"{a.CreatedByUser.FirstName} {a.CreatedByUser.LastName}" : "Yönetim",
+                CreatedByTitle = a.CreatedByUser != null ? a.CreatedByUser.AcademicTitle : "",
+                a.CreatedAt
+            })
+            .ToListAsync(ct);
+
+        return Ok(ApiResponse<List<object>>.SuccessResult(list.Cast<object>().ToList()));
+    }
+
+    /// <summary>
+    /// Yeni duyuru oluşturur (Bölüm Başkanı, Dekanlık veya Fakülte Sekreteri).
+    /// </summary>
+    [HttpPost("announcements")]
+    [Authorize(Roles = $"{AppRoles.BolumBaskani},{AppRoles.Dekanlik},{AppRoles.FakulteSekreteri}")]
+    public async Task<ActionResult<ApiResponse<bool>>> CreateAnnouncement(
+        [FromBody] CreateAnnouncementDto request,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Title) || string.IsNullOrWhiteSpace(request.Content))
+        {
+            return BadRequest(ApiResponse<bool>.FailureResult("Duyuru başlığı ve içeriği boş bırakılamaz."));
+        }
+
+        var announcement = new Announcement
+        {
+            Title = request.Title.Trim(),
+            Content = request.Content.Trim(),
+            Category = string.IsNullOrWhiteSpace(request.Category) ? "Genel" : request.Category.Trim(),
+            IsUrgent = request.IsUrgent,
+            CreatedByUserId = _currentUser.UserId ?? Guid.Empty,
+            DepartmentId = request.DepartmentId
+        };
+
+        if (_currentUser.Roles.Contains(AppRoles.BolumBaskani) && !announcement.DepartmentId.HasValue)
+        {
+            var dept = await _context.Departments.FirstOrDefaultAsync(d => d.HeadOfDepartmentId == _currentUser.UserId, ct);
+            if (dept != null)
+            {
+                announcement.DepartmentId = dept.Id;
+            }
+        }
+
+        await _context.Announcements.AddAsync(announcement, ct);
+        await _context.SaveChangesAsync(ct);
+
+        return Ok(ApiResponse<bool>.SuccessResult(true, "Duyuru başarıyla yayınlandı."));
+    }
+
+    /// <summary>
+    /// 10 günlük yasal izin sınırını aşan öğrencinin İŞKUR ilişiğini keser (Dekanlık / Fakülte Sekreteri).
+    /// </summary>
+    [HttpPost("terminate-student")]
+    [Authorize(Roles = $"{AppRoles.Dekanlik},{AppRoles.FakulteSekreteri}")]
+    public async Task<ActionResult<ApiResponse<bool>>> TerminateStudent(
+        [FromBody] TerminateStudentDto request,
+        CancellationToken ct)
+    {
+        var student = await _context.Students.Include(s => s.User).FirstOrDefaultAsync(s => s.Id == request.StudentId, ct);
+        if (student == null)
+        {
+            return NotFound(ApiResponse<bool>.FailureResult("Öğrenci bulunamadı."));
+        }
+
+        student.Status = StudentStatus.Terminated;
+
+        var activeAdvisors = await _context.StudentAdvisorAssignments
+            .Where(a => a.StudentId == student.Id && a.IsActive).ToListAsync(ct);
+        foreach (var a in activeAdvisors)
+        {
+            a.IsActive = false;
+            a.EndDate = DateTime.UtcNow;
+            a.AssignmentNote += " (İŞKUR ilişiği kesildi: " + (request.Reason ?? "10 günlük yasal izin sınırı aşımı") + ")";
+        }
+
+        var activeUnits = await _context.StudentUnitAssignments
+            .Where(u => u.StudentId == student.Id && u.IsActive).ToListAsync(ct);
+        foreach (var u in activeUnits)
+        {
+            u.IsActive = false;
+            u.EndDate = DateTime.UtcNow;
+            u.AssignmentNote += " (İŞKUR ilişiği kesildi: " + (request.Reason ?? "10 günlük yasal izin sınırı aşımı") + ")";
+        }
+
+        await _context.SaveChangesAsync(ct);
+
+        return Ok(ApiResponse<bool>.SuccessResult(true, $"{student.User?.FirstName} {student.User?.LastName} adlı öğrencinin İŞKUR ilişiği resmi olarak kesildi."));
+    }
 }
 
 public record AssignAdvisorDto(Guid StudentId, Guid AdvisorId, string? Note);
 public record AssignUnitDto(Guid StudentId, Guid UnitId, string? Note);
 public record UpdateStudentStatusDto(Guid StudentId, StudentStatus Status);
+public record CreateAnnouncementDto(string Title, string Content, string? Category, bool IsUrgent, Guid? DepartmentId);
+public record TerminateStudentDto(Guid StudentId, string? Reason);

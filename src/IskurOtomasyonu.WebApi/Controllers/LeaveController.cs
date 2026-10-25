@@ -36,7 +36,7 @@ public class LeaveController : ApiControllerBase
     /// Yetkili (Danışman/Dekanlık) tarafından izin talebini onaylar veya reddeder.
     /// </summary>
     [HttpPost("{id:guid}/evaluate")]
-    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.Dekanlik}")]
+    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.Dekanlik},{AppRoles.FakulteSekreteri}")]
     [ProducesResponseType(typeof(ApiResponse<LeaveRequestResponseDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<LeaveRequestResponseDto>>> EvaluateLeaveRequest(
         [FromRoute] Guid id, 
@@ -77,7 +77,7 @@ public class LeaveController : ApiControllerBase
     /// Onay bekleyen tüm izin taleplerini listeler.
     /// </summary>
     [HttpGet("pending")]
-    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.Dekanlik}")]
+    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.Dekanlik},{AppRoles.FakulteSekreteri}")]
     [ProducesResponseType(typeof(ApiResponse<List<LeaveRequestResponseDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<LeaveRequestResponseDto>>>> GetPendingLeaveRequests(CancellationToken ct)
     {

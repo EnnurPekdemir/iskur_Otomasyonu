@@ -50,7 +50,7 @@ public class PlanController : ApiControllerBase
     /// Danışman veya Bölüm Başkanı tarafından planı onaylar veya gerekçe belirterek reddeder (SUBMITTED -> APPROVED / REJECTED).
     /// </summary>
     [HttpPost("{id:guid}/evaluate")]
-    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.BolumBaskani},{AppRoles.Dekanlik}")]
+    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.BolumBaskani},{AppRoles.Dekanlik},{AppRoles.FakulteSekreteri}")]
     [ProducesResponseType(typeof(ApiResponse<MonthlyPlanResponseDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<MonthlyPlanResponseDto>>> EvaluatePlan(
         [FromRoute] Guid id, 
@@ -93,7 +93,7 @@ public class PlanController : ApiControllerBase
     /// Danışman onayı bekleyen tüm çalışma planlarını listeler.
     /// </summary>
     [HttpGet("pending")]
-    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.BolumBaskani},{AppRoles.Dekanlik}")]
+    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.BolumBaskani},{AppRoles.Dekanlik},{AppRoles.FakulteSekreteri}")]
     [ProducesResponseType(typeof(ApiResponse<List<MonthlyPlanResponseDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<MonthlyPlanResponseDto>>>> GetPendingPlans(CancellationToken ct)
     {

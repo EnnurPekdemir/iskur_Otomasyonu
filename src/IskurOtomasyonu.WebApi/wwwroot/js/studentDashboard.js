@@ -1,230 +1,377 @@
-// Öğrenci Paneli (Student Dashboard) Yöneticisi
+// ============================================================================
+// Öğrenci Paneli (Student Dashboard)
+// Selçuk Üniversitesi Teknoloji Fakültesi İŞKUR Otomasyonu
+// ============================================================================
 
 class StudentDashboard {
     constructor() {
         this.currentYear = new Date().getFullYear();
         this.currentMonth = new Date().getMonth() + 1;
         this.currentPlan = null;
-        this.selectedDays = new Map(); // dateString -> { date, shiftType, notes }
+        this.selectedDays = new Map(); // dateStr -> { date, shiftType, notes }
+        this.profile = null;
+        this.tasks = [];
+        this.attendances = [];
+        this.leaves = [];
+        this.announcements = [];
         this.html5QrCode = null;
     }
 
     async init() {
+        console.log("StudentDashboard başlatılıyor...");
         this.renderShell();
-        this.bindEvents();
+        this.attachEventListeners();
         await this.loadAll();
     }
 
     renderShell() {
         const container = document.getElementById('student-dashboard-view');
-        if (!container || container.innerHTML.trim().length > 0) return;
+        if (!container) return;
+
+        const months = [
+            'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+            'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+        ];
 
         container.innerHTML = `
             <div class="space-y-6 animate-fadeIn">
                 <!-- Başlık ve Aksiyon Barı -->
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-gray-200">
                     <div>
                         <div class="flex items-center gap-2">
-                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold">
-                                <i class="fa-solid fa-graduation-cap text-lg"></i>
+                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-teal-50 text-teal-800 font-bold border border-teal-200">
+                                <i class="fa-solid fa-user-graduate text-sm"></i>
                             </span>
-                            <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                            <h1 class="text-xl font-bold tracking-tight text-gray-900">
                                 Öğrenci Çalışma & Devam Takip Paneli
                             </h1>
                         </div>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                            Aylık İŞKUR çalışma planı, dinamik QR devam okutma ve izin yönetimi.
+                        <p class="text-xs text-gray-500 mt-1">
+                            Aylık çalışma planı seçimi, dinamik QR devam takibi, mazeret talebi ve danışman görevleri.
                         </p>
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <button id="open-qr-scanner-btn" class="px-4 py-2 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm flex items-center gap-2">
-                            <i class="fa-solid fa-qrcode text-base"></i>
+                        <button id="stu-open-qr-btn" class="btn-primary">
+                            <i class="fa-solid fa-qrcode text-xs"></i>
                             <span>Karekod (QR) Tara</span>
                         </button>
+                        <button id="stu-refresh-btn" class="btn-secondary">
+                            <i class="fa-solid fa-arrows-rotate text-xs"></i>
+                            <span>Yenile</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI İstatistik Kartları (Minimal Gri-Beyaz Kutucuklar) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- Toplam Çalışılan Gün -->
+                    <div class="box-card p-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Toplam Çalışılan Gün</p>
+                            <h3 id="stu-stat-worked-days" class="text-2xl font-bold text-gray-900 mt-0.5">- Gün</h3>
+                            <p id="stu-stat-worked-hours" class="text-[11px] text-teal-800 font-medium mt-0.5">- Saat Çalışıldı</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800 text-lg">
+                            <i class="fa-solid fa-calendar-check"></i>
+                        </div>
+                    </div>
+
+                    <!-- İzin Kotası (10 Gün Yasal Sınır) -->
+                    <div class="box-card p-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Kalan İzin Hakkı</p>
+                            <h3 id="stu-stat-remaining-leave" class="text-2xl font-bold text-gray-900 mt-0.5">- / 10 Gün</h3>
+                            <p id="stu-stat-used-leave" class="text-[11px] text-gray-500 mt-0.5">- Gün Kullanıldı</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-700 text-lg">
+                            <i class="fa-solid fa-file-signature"></i>
+                        </div>
+                    </div>
+
+                    <!-- Bugünün Devam Durumu -->
+                    <div class="box-card p-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Bugünkü Yoklama</p>
+                            <h3 id="stu-stat-today-status" class="text-base font-bold text-gray-900 mt-1">Giriş Yapılmadı</h3>
+                            <p id="stu-stat-today-hours" class="text-[11px] text-gray-400 mt-0.5">Giriş: - | Çıkış: -</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 text-lg">
+                            <i class="fa-solid fa-clock"></i>
+                        </div>
+                    </div>
+
+                    <!-- Atanan Görevler -->
+                    <div class="box-card p-4 flex items-center justify-between">
+                        <div>
+                            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Danışman Görevleri</p>
+                            <h3 id="stu-stat-pending-tasks" class="text-2xl font-bold text-gray-900 mt-0.5">-</h3>
+                            <p class="text-[11px] text-gray-400 mt-0.5">Bekleyen / Tamamlanan</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-700 text-lg">
+                            <i class="fa-solid fa-list-check"></i>
+                        </div>
                     </div>
                 </div>
 
                 <!-- Sekmeler (Tabs) -->
-                <div class="border-b border-slate-200 dark:border-slate-800">
+                <div class="border-b border-gray-200">
                     <nav class="flex space-x-6 overflow-x-auto" aria-label="Student Tabs">
-                        <button data-tab="plan" class="student-tab-btn py-3 px-1 border-b-2 border-blue-600 font-semibold text-sm text-blue-600 flex items-center gap-2 whitespace-nowrap">
+                        <button id="stu-tab-plan-btn" class="stu-tab-btn py-2.5 px-1 border-b-2 border-teal-800 font-semibold text-xs text-teal-900 flex items-center gap-2 whitespace-nowrap">
                             <i class="fa-solid fa-calendar-days"></i>
-                            <span>Aylık Çalışma Planı Takvimi</span>
+                            <span>Aylık Çalışma Planı Seçimi</span>
                         </button>
-                        <button data-tab="leaves" class="student-tab-btn py-3 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 flex items-center gap-2 whitespace-nowrap">
-                            <i class="fa-solid fa-file-signature"></i>
-                            <span>İzin Taleplerim</span>
+                        <button id="stu-tab-leave-btn" class="stu-tab-btn py-2.5 px-1 border-b-2 border-transparent font-medium text-xs text-gray-500 hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-file-pen"></i>
+                            <span>Mazeret Talebi Oluşturma</span>
                         </button>
-                        <button data-tab="tasks" class="student-tab-btn py-3 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 flex items-center gap-2 whitespace-nowrap">
+                        <button id="stu-tab-tasks-btn" class="stu-tab-btn py-2.5 px-1 border-b-2 border-transparent font-medium text-xs text-gray-500 hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
                             <i class="fa-solid fa-list-check"></i>
-                            <span>Atanan Görevlerim</span>
+                            <span>Danışman Görevleri</span>
+                            <span id="stu-tasks-badge" class="hidden px-1.5 py-0.5 text-[10px] rounded-full bg-teal-100 text-teal-800 font-bold">0</span>
                         </button>
-                        <button data-tab="attendances" class="student-tab-btn py-3 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 flex items-center gap-2 whitespace-nowrap">
+                        <button id="stu-tab-announcements-btn" class="stu-tab-btn py-2.5 px-1 border-b-2 border-transparent font-medium text-xs text-gray-500 hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-bullhorn"></i>
+                            <span>Genel Duyurular</span>
+                        </button>
+                        <button id="stu-tab-history-btn" class="stu-tab-btn py-2.5 px-1 border-b-2 border-transparent font-medium text-xs text-gray-500 hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
                             <i class="fa-solid fa-clock-rotate-left"></i>
-                            <span>Devam Geçmişim</span>
+                            <span>Giriş-Çıkış Devam Geçmişi</span>
                         </button>
                     </nav>
                 </div>
 
-                <!-- 1. Sekme: Çalışma Planı -->
-                <div id="student-tab-plan" class="student-tab-content space-y-4">
-                    <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div class="flex items-center gap-3">
-                            <button id="student-prev-month-btn" class="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
-                                <i class="fa-solid fa-chevron-left text-xs"></i>
+                <!-- ========================================================= -->
+                <!-- 1. PANE: AYLIK ÇALIŞMA PLANI SEÇİMİ -->
+                <!-- ========================================================= -->
+                <div id="stu-pane-plan" class="space-y-4">
+                    <div class="box-card p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div class="flex items-center gap-2">
+                            <button id="stu-prev-month" class="w-7 h-7 rounded border border-gray-300 bg-white hover:bg-gray-100 flex items-center justify-center text-gray-600">
+                                <i class="fa-solid fa-chevron-left text-[10px]"></i>
                             </button>
-                            <h3 id="student-current-month-label" class="text-base font-bold text-slate-900 dark:text-white capitalize min-w-[140px] text-center">-</h3>
-                            <button id="student-next-month-btn" class="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
-                                <i class="fa-solid fa-chevron-right text-xs"></i>
+                            <span id="stu-month-label" class="font-bold text-gray-900 min-w-[100px] text-center">-</span>
+                            <button id="stu-next-month" class="w-7 h-7 rounded border border-gray-300 bg-white hover:bg-gray-100 flex items-center justify-center text-gray-600">
+                                <i class="fa-solid fa-chevron-right text-[10px]"></i>
                             </button>
-                            <span id="student-plan-status-badge" class="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Durum</span>
+                            <span id="stu-plan-status" class="badge-minimal badge-neutral ml-2">Taslak</span>
                         </div>
-                        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-                            <button id="student-save-plan-btn" class="px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition">
+
+                        <div class="flex items-center gap-2">
+                            <button id="stu-save-plan-btn" class="btn-secondary">
                                 Taslağı Kaydet
                             </button>
-                            <button id="student-submit-plan-btn" class="px-4 py-2 text-xs font-semibold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition">
-                                Onaya Gönder
+                            <button id="stu-submit-plan-btn" class="btn-primary">
+                                Danışman Onayına Gönder
                             </button>
                         </div>
                     </div>
 
-                    <!-- Renk Kodları Açıklaması -->
-                    <div class="flex flex-wrap items-center gap-4 text-xs text-slate-500 px-1">
-                        <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-500"></span> Seçilen/Uygun Gün</span>
-                        <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-rose-500"></span> Resmî Tatil / Kapalı</span>
-                        <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-200 dark:bg-slate-700"></span> Boş Seçilebilir Gün</span>
-                        <span class="text-indigo-600 dark:text-indigo-400 font-medium">Haftalık 1-3 gün (En fazla 15 saat) kuralı geçerlidir.</span>
+                    <!-- Kural & Çakışma Bilgilendirmesi -->
+                    <div class="box-card p-3 bg-gray-50 text-xs flex flex-wrap items-center justify-between gap-2 text-gray-600">
+                        <div class="flex items-center gap-3">
+                            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span> Seçilen Gün</span>
+                            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-gray-300"></span> Boş Gün</span>
+                            <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Resmî Tatil / Hafta Sonu</span>
+                        </div>
+                        <span class="text-gray-500 font-medium">Haftalık en fazla <strong>3 gün</strong> ve günlük en fazla <strong>5 saat</strong> seçilebilir.</span>
                     </div>
 
                     <!-- Takvim Grid -->
-                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-4 overflow-hidden">
-                        <div class="grid grid-cols-7 gap-2 mb-2 text-center text-xs font-bold text-slate-400 uppercase">
-                            <div>Pzt</div><div>Sal</div><div>Çar</div><div>Per</div><div>Cum</div><div class="text-rose-400">Cmt</div><div class="text-rose-400">Paz</div>
+                    <div class="box-card p-4 overflow-hidden">
+                        <div class="grid grid-cols-7 gap-1.5 text-center text-xs font-bold text-gray-500 mb-2">
+                            <div>Pzt</div><div>Sal</div><div>Çar</div><div>Per</div><div>Cum</div><div class="text-rose-500">Cmt</div><div class="text-rose-500">Paz</div>
                         </div>
-                        <div id="student-calendar-grid" class="grid grid-cols-7 gap-2"></div>
+                        <div id="stu-calendar-grid" class="grid grid-cols-7 gap-1.5">
+                            <!-- Günler JS ile doldurulur -->
+                        </div>
                     </div>
                 </div>
 
-                <!-- 2. Sekme: İzin Talepleri -->
-                <div id="student-tab-leaves" class="student-tab-content space-y-4 hidden">
-                    <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h3 class="font-bold text-slate-900 dark:text-white">Yıllık Mazeret / İzin Kotası</h3>
-                                <p class="text-xs text-slate-500">Yıllık toplam 10 iş günü izin hakkınız bulunmaktadır.</p>
+                <!-- ========================================================= -->
+                <!-- 2. PANE: MAZERET TALEBİ OLUŞTURMA -->
+                <!-- ========================================================= -->
+                <div id="stu-pane-leave" class="space-y-4 hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Mazeret Formu -->
+                        <div class="box-card p-4 md:col-span-1 space-y-3">
+                            <div class="flex items-center gap-2 pb-2 border-b border-gray-200">
+                                <i class="fa-solid fa-file-pen text-teal-700"></i>
+                                <h3 class="font-bold text-xs text-gray-900">Mazeret İzin Formu</h3>
                             </div>
-                            <span id="student-remaining-leave-label" class="text-lg font-black text-indigo-600 dark:text-indigo-400">- / 10 Gün</span>
-                        </div>
-                        <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
-                            <div id="student-leave-progress" class="bg-indigo-600 h-3 rounded-full transition-all duration-500" style="width: 100%"></div>
-                        </div>
-                    </div>
-
-                    <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
-                        <h4 class="font-bold text-slate-900 dark:text-white text-sm mb-4">Yeni İzin Talebi Oluştur</h4>
-                        <form id="create-leave-form" class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <form id="stu-leave-form" class="space-y-3 text-xs">
                                 <div>
-                                    <label class="block text-xs font-semibold text-slate-500 mb-1">İzin Türü</label>
-                                    <select id="leave-type-select" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                                    <label class="block font-semibold text-gray-500 mb-0.5">Ad Soyad</label>
+                                    <input type="text" id="stu-leave-fullname" readonly 
+                                           class="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg bg-gray-100 text-gray-700 font-semibold cursor-not-allowed">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-gray-500 mb-0.5">Görevli Olduğu Birim</label>
+                                    <input type="text" id="stu-leave-unit" readonly 
+                                           class="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg bg-gray-100 text-gray-700 cursor-not-allowed">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-gray-600 mb-0.5">İzin Türü</label>
+                                    <select id="stu-leave-type" class="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg bg-white">
                                         <option value="Mazeret">Mazeret İzni</option>
                                         <option value="Sağlık">Sağlık Raporlu İzin</option>
-                                        <option value="Sınav">Akademik Sınav İzni</option>
+                                        <option value="Sınav">Sınav / Akademik İzin</option>
                                     </select>
                                 </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-500 mb-1">Başlangıç Tarihi</label>
-                                    <input type="date" id="leave-start-date" required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block font-semibold text-gray-600 mb-0.5">Başlangıç Tarihi</label>
+                                        <input type="date" id="stu-leave-start" required class="w-full px-2 py-1.5 border border-gray-300 rounded-lg">
+                                    </div>
+                                    <div>
+                                        <label class="block font-semibold text-gray-600 mb-0.5">Bitiş Tarihi</label>
+                                        <input type="date" id="stu-leave-end" required class="w-full px-2 py-1.5 border border-gray-300 rounded-lg">
+                                    </div>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-semibold text-slate-500 mb-1">Bitiş Tarihi</label>
-                                    <input type="date" id="leave-end-date" required class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                                    <label class="block font-semibold text-gray-600 mb-0.5">Mazeret Açıklaması</label>
+                                    <textarea id="stu-leave-reason" rows="3" required placeholder="Çalışamayacağınız gerekçeyi kısaca açıklayınız..." 
+                                              class="w-full px-2.5 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:border-teal-700"></textarea>
                                 </div>
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-500 mb-1">Mazeret Açıklaması</label>
-                                <textarea id="leave-reason" rows="2" required placeholder="İzin gerekçenizi belirtiniz..." class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200"></textarea>
-                            </div>
-                            <div class="flex items-center justify-between pt-2">
-                                <span id="leave-days-count" class="text-xs font-bold text-slate-600 dark:text-slate-300"></span>
-                                <button type="submit" class="px-5 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm flex items-center gap-2">
+                                <div class="p-2 bg-amber-50 rounded border border-amber-200 text-[11px] text-amber-900 leading-tight">
+                                    <i class="fa-solid fa-circle-info mr-1"></i>
+                                    Bu talep doğrudan <strong>Fakülte Sekreteri</strong> ve <strong>Danışmanınıza</strong> iletilecektir.
+                                </div>
+                                <button type="submit" id="stu-submit-leave-btn" class="w-full btn-primary justify-center">
                                     <i class="fa-solid fa-paper-plane text-xs"></i>
-                                    <span>Talebi İlet</span>
+                                    <span>Talebi Sekreterlik ve Danışmana Gönder</span>
                                 </button>
-                            </div>
-                        </form>
-                    </div>
+                            </form>
+                        </div>
 
-                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-                        <div class="p-4 border-b border-slate-100 dark:border-slate-800 font-bold text-sm">İzin Talepleri Geçmişi</div>
+                        <!-- Geçmiş İzin Talepleri Tablosu -->
+                        <div class="box-card p-4 md:col-span-2 space-y-3">
+                            <div class="flex items-center justify-between pb-2 border-b border-gray-200">
+                                <h3 class="font-bold text-xs text-gray-900">Geçmiş Mazeret Taleplerim</h3>
+                                <span class="text-[11px] text-gray-400">Yıllık yasal hak: 10 gün</span>
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="table-minimal text-xs">
+                                    <thead>
+                                        <tr>
+                                            <th>Tür</th>
+                                            <th>Tarih Aralığı</th>
+                                            <th class="text-center">Süre</th>
+                                            <th>Açıklama</th>
+                                            <th class="text-center">Durum</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="stu-leaves-table-body">
+                                        <tr>
+                                            <td colspan="5" class="py-6 text-center text-gray-400">İzin geçmişi yükleniyor...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================================= -->
+                <!-- 3. PANE: DANIŞMAN GÖREVLERİ -->
+                <!-- ========================================================= -->
+                <div id="stu-pane-tasks" class="space-y-4 hidden">
+                    <div class="box-card p-3 bg-gray-50 text-xs text-gray-600 flex items-center justify-between">
+                        <span>Danışmanınız tarafından atanan iş ve görevleri buradan takip edip teslim notuyla tamamlayabilirsiniz.</span>
+                    </div>
+                    <div id="stu-tasks-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="py-8 text-center text-gray-400 text-xs md:col-span-2">Görevler yükleniyor...</div>
+                    </div>
+                </div>
+
+                <!-- ========================================================= -->
+                <!-- 4. PANE: GENEL DUYURULAR -->
+                <!-- ========================================================= -->
+                <div id="stu-pane-announcements" class="space-y-4 hidden">
+                    <div class="box-card p-4 space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-gray-200">
+                            <h3 class="font-bold text-xs text-gray-900">Fakülte ve Bölüm Genel Duyuruları</h3>
+                            <span class="text-[11px] text-gray-400">Tüm çalışan öğrencilere yönelik resmi bildirimler</span>
+                        </div>
+                        <div id="stu-announcements-list" class="space-y-2.5">
+                            <div class="py-6 text-center text-gray-400 text-xs">Duyurular yükleniyor...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================================= -->
+                <!-- 5. PANE: DEVAM GEÇMİŞİ -->
+                <!-- ========================================================= -->
+                <div id="stu-pane-history" class="space-y-4 hidden">
+                    <div class="box-card overflow-hidden">
+                        <div class="p-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                            <span class="font-bold text-xs text-gray-700">Karekod (QR) Giriş-Çıkış ve Devam Saatleri</span>
+                        </div>
                         <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm">
+                            <table class="table-minimal text-xs">
                                 <thead>
-                                    <tr class="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 text-xs text-slate-400 font-semibold">
-                                        <th class="py-3 px-4">Tür</th>
-                                        <th class="py-3 px-4">Tarihler</th>
-                                        <th class="py-3 px-3 text-center">Gün</th>
-                                        <th class="py-3 px-4">Açıklama</th>
-                                        <th class="py-3 px-4 text-center">Durum</th>
+                                    <tr>
+                                        <th>Tarih</th>
+                                        <th>Giriş Saati</th>
+                                        <th>Çıkış Saati</th>
+                                        <th class="text-center">Çalışılan Süre</th>
+                                        <th class="text-center">Doğrulama Türü</th>
+                                        <th class="text-center">Durum</th>
                                     </tr>
                                 </thead>
-                                <tbody id="student-leaves-table-body" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                                <tbody id="stu-history-table-body">
+                                    <tr>
+                                        <td colspan="6" class="py-6 text-center text-gray-400">Devam kayıtları yükleniyor...</td>
+                                    </tr>
+                                </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-
-                <!-- 3. Sekme: Atanan Görevler -->
-                <div id="student-tab-tasks" class="student-tab-content space-y-4 hidden">
-                    <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm font-bold text-sm">
-                        Danışman Tarafından Atanan Görevler
-                    </div>
-                    <div id="student-tasks-table-body" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-                </div>
-
-                <!-- 4. Sekme: Devam Geçmişi -->
-                <div id="student-tab-attendances" class="student-tab-content space-y-4 hidden">
-                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-                        <div class="p-4 border-b border-slate-100 dark:border-slate-800 font-bold text-sm">Fiili QR Devam Kayıtları</div>
-                        <div id="student-recent-attendances-list" class="divide-y divide-slate-100 dark:divide-slate-800"></div>
-                    </div>
-                </div>
             </div>
 
-            <!-- Gün Seçimi Modalı -->
-            <div id="student-day-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-scaleIn">
-                    <h3 id="day-modal-title" class="font-bold text-slate-900 dark:text-white mb-4 text-base">Çalışma Günü Belirleme</h3>
-                    <input type="hidden" id="day-modal-date">
-                    
-                    <div id="day-modal-weekly-warning" class="hidden p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs mb-3 border border-amber-200 dark:border-amber-900"></div>
+            <!-- Gün Belirleme & Ders Çakışması Modalı -->
+            <div id="stu-day-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-xs hidden">
+                <div class="box-card bg-white p-5 max-w-sm w-full space-y-3 shadow-xl">
+                    <h3 id="stu-modal-date-title" class="font-bold text-gray-900 text-sm">Çalışma Günü Belirleme</h3>
+                    <input type="hidden" id="stu-modal-date">
 
-                    <div class="space-y-3">
+                    <!-- Ders Çakışması / Tam Gün Ders Uyarı Kutusu -->
+                    <div id="stu-modal-conflict-warning" class="hidden p-2.5 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-[11px] leading-relaxed space-y-1">
+                        <div class="font-bold flex items-center gap-1 text-amber-800">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            <span>Ders Çakışması / Tam Gün Ders Uyarısı</span>
+                        </div>
+                        <p id="stu-modal-conflict-text">
+                            Seçilen gün fakülte programınızda ders bulunmaktadır.
+                        </p>
+                    </div>
+
+                    <div class="space-y-2 text-xs">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">Vardiya / Çalışma Süresi</label>
-                            <select id="day-modal-shift" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
-                                <option value="Full">Tam Gün (5 Saat)</option>
-                                <option value="Morning">Öğleden Önce (4 Saat - Sabah)</option>
-                                <option value="Afternoon">Öğleden Sonra (4 Saat - Öğle)</option>
+                            <label class="block font-semibold text-gray-600 mb-1">Vardiya / Çalışma Saati</label>
+                            <select id="stu-modal-shift" class="w-full p-2 border border-gray-300 rounded-lg bg-white">
+                                <option value="Morning">Öğleden Önce (09:00 - 13:00 / 4 Saat)</option>
+                                <option value="Afternoon">Öğleden Sonra (13:00 - 17:00 / 4 Saat)</option>
+                                <option value="Full">Tam Gün İŞKUR (09:00 - 14:00 / 5 Saat)</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">Not / Plan Açıklaması</label>
-                            <input type="text" id="day-modal-notes" placeholder="Örn: Laboratuvar teknik desteği" class="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
+                            <label class="block font-semibold text-gray-600 mb-1">Açıklama / Görev Notu</label>
+                            <input type="text" id="stu-modal-notes" placeholder="Örn: Laboratuvar teknik desteği" 
+                                   class="w-full p-2 border border-gray-300 rounded-lg">
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-between pt-5 mt-4 border-t border-slate-100 dark:border-slate-800">
-                        <button type="button" id="day-modal-remove-btn" class="px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-xl transition">
-                            Günü Çıkar
+                    <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+                        <button type="button" id="stu-modal-remove-btn" class="px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg font-medium">
+                            Günü Kaldır
                         </button>
                         <div class="flex items-center gap-2">
-                            <button type="button" onclick="Modal.close('student-day-modal')" class="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl">
+                            <button type="button" onclick="document.getElementById('stu-day-modal').classList.add('hidden')" class="btn-secondary">
                                 İptal
                             </button>
-                            <button type="button" id="day-modal-save-btn" class="px-4 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm">
+                            <button type="button" id="stu-modal-save-btn" class="btn-primary">
                                 Kaydet
                             </button>
                         </div>
@@ -232,380 +379,336 @@ class StudentDashboard {
                 </div>
             </div>
 
-            <!-- QR Tarayıcı Modalı -->
-            <div id="qr-scanner-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scaleIn">
-                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-qrcode text-emerald-600 text-lg"></i>
-                            <h3 class="font-bold text-slate-900 dark:text-white">Danışman QR Kodunu Tara</h3>
-                        </div>
-                        <button id="close-qr-scanner-btn" class="text-slate-400 hover:text-slate-600">
-                            <i class="fa-solid fa-xmark text-lg"></i>
-                        </button>
-                    </div>
-
-                    <div class="mt-4 space-y-4">
-                        <div id="qr-reader" class="rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 min-h-[220px]"></div>
-                        <div id="qr-camera-error" class="hidden p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-xs">
-                            Kamera erişimi sağlanamadı. Lütfen tarayıcı izinlerini kontrol edin veya kodu elle girin.
-                        </div>
-
-                        <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
-                            <label class="block text-xs font-semibold text-slate-500 mb-1">Veya Token Kodunu Elle Giriniz</label>
-                            <div class="flex gap-2">
-                                <input type="text" id="qr-token-input" placeholder="32 haneli QR Hash..." class="flex-1 px-3 py-2 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
-                                <button type="button" id="submit-manual-qr-btn" class="px-4 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl">
-                                    Doğrula
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Görev Tamamlama Modalı -->
-            <div id="complete-task-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-scaleIn">
-                    <h3 class="font-bold text-slate-900 dark:text-white mb-2 text-base">Görevi Tamamla</h3>
-                    <p class="text-xs text-slate-500 mb-4">Görevi teslim ederken danışmanınıza iletmek istediğiniz notu giriniz.</p>
-                    <input type="hidden" id="complete-task-id">
-                    <textarea id="complete-task-note" rows="3" placeholder="Örn: Rapor ve kod dosyaları teslim edildi." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 mb-4"></textarea>
-                    <div class="flex items-center justify-end gap-2">
-                        <button type="button" onclick="Modal.close('complete-task-modal')" class="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-xl">İptal</button>
-                        <button type="button" id="complete-task-submit-btn" class="px-4 py-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl">Teslim Et</button>
+            <div id="stu-task-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-xs hidden">
+                <div class="box-card bg-white p-5 max-w-sm w-full space-y-3 shadow-xl">
+                    <h3 class="font-bold text-gray-900 text-sm">Görevi Tamamla ve Not Ekle</h3>
+                    <input type="hidden" id="stu-task-modal-id">
+                    <p id="stu-task-modal-title" class="text-xs font-semibold text-gray-800">Görev Adı</p>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">Teslim Notunuz</label>
+                        <textarea id="stu-task-modal-note" rows="3" placeholder="Görev kapsamında yapılan çalışmaları açıklayınız..." 
+                                  class="w-full p-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-teal-700"></textarea>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 pt-2">
+                        <button type="button" onclick="document.getElementById('stu-task-modal').classList.add('hidden')" class="btn-secondary">
+                            Vazgeç
+                        </button>
+                        <button type="button" id="stu-confirm-task-btn" class="btn-primary">
+                            Tamamlandı Olarak İlet
+                        </button>
                     </div>
                 </div>
             </div>
         `;
     }
 
-    bindEvents() {
-        // Ay Değiştirme
-        const prevMonthBtn = document.getElementById('student-prev-month-btn');
-        const nextMonthBtn = document.getElementById('student-next-month-btn');
-        if (prevMonthBtn) prevMonthBtn.onclick = () => this.changeMonth(-1);
-        if (nextMonthBtn) nextMonthBtn.onclick = () => this.changeMonth(1);
+    attachEventListeners() {
+        document.getElementById('stu-refresh-btn')?.addEventListener('click', () => this.loadAll());
+        document.getElementById('stu-open-qr-btn')?.addEventListener('click', () => {
+            if (window.qrScannerComponent) {
+                window.qrScannerComponent.openScanner();
+            } else {
+                AppToast.info("QR okuyucu bileşeni açılıyor...");
+            }
+        });
+
+        // Sekmeler
+        const tabs = [
+            { btn: 'stu-tab-plan-btn', pane: 'stu-pane-plan' },
+            { btn: 'stu-tab-leave-btn', pane: 'stu-pane-leave' },
+            { btn: 'stu-tab-tasks-btn', pane: 'stu-pane-tasks' },
+            { btn: 'stu-tab-announcements-btn', pane: 'stu-pane-announcements' },
+            { btn: 'stu-tab-history-btn', pane: 'stu-pane-history' }
+        ];
+
+        tabs.forEach(t => {
+            document.getElementById(t.btn)?.addEventListener('click', () => {
+                tabs.forEach(o => {
+                    const b = document.getElementById(o.btn);
+                    const p = document.getElementById(o.pane);
+                    if (o.btn === t.btn) {
+                        b?.classList.add('border-teal-800', 'text-teal-900', 'font-semibold');
+                        b?.classList.remove('border-transparent', 'text-gray-500');
+                        p?.classList.remove('hidden');
+                    } else {
+                        b?.classList.remove('border-teal-800', 'text-teal-900', 'font-semibold');
+                        b?.classList.add('border-transparent', 'text-gray-500');
+                        p?.classList.add('hidden');
+                    }
+                });
+            });
+        });
+
+        // Takvim Ay Değişimi
+        document.getElementById('stu-prev-month')?.addEventListener('click', () => {
+            this.currentMonth--;
+            if (this.currentMonth < 1) {
+                this.currentMonth = 12;
+                this.currentYear--;
+            }
+            this.loadMonthlyPlan();
+        });
+
+        document.getElementById('stu-next-month')?.addEventListener('click', () => {
+            this.currentMonth++;
+            if (this.currentMonth > 12) {
+                this.currentMonth = 1;
+                this.currentYear++;
+            }
+            this.loadMonthlyPlan();
+        });
 
         // Plan Kaydet ve Onaya Gönder Butonları
-        const savePlanBtn = document.getElementById('student-save-plan-btn');
-        const submitPlanBtn = document.getElementById('student-submit-plan-btn');
-        if (savePlanBtn) savePlanBtn.onclick = () => this.savePlanDraft();
-        if (submitPlanBtn) submitPlanBtn.onclick = () => this.submitPlanForApproval();
+        document.getElementById('stu-save-plan-btn')?.addEventListener('click', () => this.savePlanDraft());
+        document.getElementById('stu-submit-plan-btn')?.addEventListener('click', () => this.submitPlan());
 
-        // QR Tarayıcı Modal Butonu
-        const openQrBtn = document.getElementById('open-qr-scanner-btn');
-        if (openQrBtn) openQrBtn.onclick = () => this.openQrScanner();
-
-        const closeQrBtn = document.getElementById('close-qr-scanner-btn');
-        if (closeQrBtn) closeQrBtn.onclick = () => this.closeQrScanner();
-
-        const manualQrBtn = document.getElementById('submit-manual-qr-btn');
-        if (manualQrBtn) manualQrBtn.onclick = () => this.submitManualQrToken();
-
-        // İzin Talep Formu
-        const leaveForm = document.getElementById('create-leave-form');
-        if (leaveForm) leaveForm.onsubmit = (e) => this.handleCreateLeave(e);
-
-        // Sekme Geçişleri
-        document.querySelectorAll('.student-tab-btn').forEach(btn => {
-            btn.onclick = (e) => this.switchTab(e.currentTarget.dataset.tab);
+        // Mazeret Formu Submit
+        document.getElementById('stu-leave-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await this.handleCreateLeave();
         });
+
+        // Gün Belirleme Modal Butonları
+        document.getElementById('stu-modal-save-btn')?.addEventListener('click', () => this.saveDayModal());
+        document.getElementById('stu-modal-remove-btn')?.addEventListener('click', () => this.removeDayModal());
+
+        // Vardiya değiştiğinde ders çakışması kontrolü
+        document.getElementById('stu-modal-shift')?.addEventListener('change', () => this.checkConflictWarning());
+
+        // Görev Tamamlama Onay Butonu
+        document.getElementById('stu-confirm-task-btn')?.addEventListener('click', () => this.executeTaskComplete());
     }
 
     async loadAll() {
-        const student = AppStateManager.user;
-        if (!student) return;
-
-        await Promise.all([
-            this.loadMonthlyPlan(),
-            this.loadLeaveBalance(),
-            this.loadTasks(),
-            this.loadRecentAttendances()
-        ]);
-    }
-
-    switchTab(tabId) {
-        document.querySelectorAll('.student-tab-content').forEach(el => el.classList.add('hidden'));
-        document.querySelectorAll('.student-tab-btn').forEach(btn => {
-            btn.classList.remove('border-blue-600', 'text-blue-600', 'font-semibold');
-            btn.classList.add('border-transparent', 'text-gray-500');
-        });
-
-        const activeContent = document.getElementById(`student-tab-${tabId}`);
-        const activeBtn = document.querySelector(`.student-tab-btn[data-tab="${tabId}"]`);
-
-        if (activeContent) activeContent.classList.remove('hidden');
-        if (activeBtn) {
-            activeBtn.classList.remove('border-transparent', 'text-gray-500');
-            activeBtn.classList.add('border-blue-600', 'text-blue-600', 'font-semibold');
+        try {
+            await this.loadProfile();
+            await Promise.all([
+                this.loadMonthlyPlan(),
+                this.loadLeaves(),
+                this.loadTasks(),
+                this.loadAttendances(),
+                this.loadAnnouncements()
+            ]);
+        } catch (err) {
+            console.error("Öğrenci verileri yükleme hatası:", err);
         }
     }
 
-    // ==========================================
-    // 1. Aylık Çalışma Planı ve Takvim Görünümü
-    // ==========================================
+    async loadProfile() {
+        try {
+            const res = await ApiClient.Academic.getMyProfile();
+            this.profile = res.data || {};
+            
+            // Mazeret formu alanlarını doldur
+            const fnEl = document.getElementById('stu-leave-fullname');
+            const unitEl = document.getElementById('stu-leave-unit');
+            if (fnEl) fnEl.value = this.profile.fullName || '';
+            if (unitEl) unitEl.value = this.profile.unit ? this.profile.unit.name : 'Teknoloji Fakültesi';
+
+            // İzin kotası KPI
+            const rem = this.profile.remainingLeaveDays ?? 10;
+            const used = 10 - rem;
+            document.getElementById('stu-stat-remaining-leave').textContent = `${rem} / 10 Gün`;
+            document.getElementById('stu-stat-used-leave').textContent = `${used} Gün Kullanıldı`;
+        } catch (err) {
+            console.warn("Profil çekilemedi:", err);
+        }
+    }
+
     async loadMonthlyPlan() {
-        const monthLabel = document.getElementById('student-current-month-label');
-        if (monthLabel) {
-            const date = new Date(this.currentYear, this.currentMonth - 1, 1);
-            monthLabel.textContent = date.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
-        }
+        const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+        document.getElementById('stu-month-label').textContent = `${months[this.currentMonth - 1]} ${this.currentYear}`;
+
+        this.selectedDays.clear();
+
+        if (!this.profile || !this.profile.studentId) return;
 
         try {
-            const studentId = AppStateManager.user?.studentId;
-            if (!studentId) return;
+            const res = await ApiClient.Plan.getStudentPlan(this.profile.studentId, this.currentYear, this.currentMonth);
+            this.currentPlan = res.data || null;
 
-            const response = await ApiClient.Plan.getStudentPlan(studentId, this.currentYear, this.currentMonth);
-            this.currentPlan = response.data || null;
+            const statusBadge = document.getElementById('stu-plan-status');
+            if (this.currentPlan) {
+                if (statusBadge) {
+                    statusBadge.textContent = this.currentPlan.approvalStatus === 3 ? 'Onaylandı' : (this.currentPlan.approvalStatus === 2 ? 'Danışman Onayında' : 'Taslak');
+                    statusBadge.className = `badge-minimal ml-2 ${this.currentPlan.approvalStatus === 3 ? 'badge-success' : (this.currentPlan.approvalStatus === 2 ? 'badge-warning' : 'badge-neutral')}`;
+                }
 
-            this.selectedDays.clear();
-            if (this.currentPlan && this.currentPlan.days) {
-                this.currentPlan.days.forEach(d => {
-                    const dateKey = d.date.slice(0, 10);
-                    this.selectedDays.set(dateKey, {
-                        id: d.id,
-                        date: dateKey,
-                        shiftType: this.inferShiftType(d.startTime, d.plannedHours),
-                        plannedHours: d.plannedHours,
-                        dayStatus: d.dayStatus,
-                        notes: d.notes,
-                        hasAttendance: d.hasAttendance
+                if (this.currentPlan.days) {
+                    this.currentPlan.days.forEach(d => {
+                        const dateKey = d.date.slice(0, 10);
+                        this.selectedDays.set(dateKey, {
+                            date: dateKey,
+                            shiftType: d.plannedHours === 5 ? 'Full' : (d.startTime && d.startTime.startsWith('09') ? 'Morning' : 'Afternoon'),
+                            notes: d.notes || ''
+                        });
                     });
-                });
+                }
+            } else {
+                if (statusBadge) {
+                    statusBadge.textContent = 'Henüz Plan Yok';
+                    statusBadge.className = 'badge-minimal ml-2 badge-neutral';
+                }
             }
-
-            this.renderPlanStatusBadge();
-            this.renderCalendar();
-        } catch (error) {
-            // Plan henüz oluşturulmamış olabilir
+        } catch (err) {
             this.currentPlan = null;
-            this.selectedDays.clear();
-            this.renderPlanStatusBadge();
-            this.renderCalendar();
-        }
-    }
-
-    inferShiftType(startTime, hours) {
-        if (hours === 5) return 'Full';
-        if (startTime?.startsWith('13')) return 'Afternoon';
-        return 'Morning';
-    }
-
-    changeMonth(delta) {
-        this.currentMonth += delta;
-        if (this.currentMonth > 12) {
-            this.currentMonth = 1;
-            this.currentYear++;
-        } else if (this.currentMonth < 1) {
-            this.currentMonth = 12;
-            this.currentYear--;
-        }
-        this.loadMonthlyPlan();
-    }
-
-    renderPlanStatusBadge() {
-        const badgeEl = document.getElementById('student-plan-status-badge');
-        const submitBtn = document.getElementById('student-submit-plan-btn');
-        const saveBtn = document.getElementById('student-save-plan-btn');
-
-        if (!badgeEl) return;
-
-        if (!this.currentPlan) {
-            badgeEl.className = 'px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700';
-            badgeEl.textContent = 'Plan Yok (Taslak Oluşturun)';
-            if (submitBtn) submitBtn.disabled = true;
-            if (saveBtn) saveBtn.disabled = false;
-            return;
         }
 
-        const status = this.currentPlan.approvalStatus; // 1: Draft, 2: Submitted, 3: Approved, 4: Rejected
-
-        if (status === 1 || status === 'Draft') {
-            badgeEl.className = 'px-3 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800';
-            badgeEl.textContent = 'Taslak (Onaya Sunulmadı)';
-            if (submitBtn) submitBtn.disabled = false;
-            if (saveBtn) saveBtn.disabled = false;
-        } else if (status === 2 || status === 'Submitted') {
-            badgeEl.className = 'px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800';
-            badgeEl.textContent = 'Danışman Onayı Bekliyor';
-            if (submitBtn) submitBtn.disabled = true;
-            if (saveBtn) saveBtn.disabled = true;
-        } else if (status === 3 || status === 'Approved') {
-            badgeEl.className = 'px-3 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800';
-            badgeEl.textContent = 'Onaylandı (Geçerli Plan)';
-            if (submitBtn) submitBtn.disabled = true;
-            if (saveBtn) saveBtn.disabled = true;
-        } else if (status === 4 || status === 'Rejected') {
-            badgeEl.className = 'px-3 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-800';
-            badgeEl.textContent = `Reddedildi: ${this.currentPlan.rejectionReason || 'Gerekçe belirtilmedi'}`;
-            if (submitBtn) submitBtn.disabled = false;
-            if (saveBtn) saveBtn.disabled = false;
-        }
+        this.renderCalendarGrid();
     }
 
-    renderCalendar() {
-        const grid = document.getElementById('student-calendar-grid');
+    renderCalendarGrid() {
+        const grid = document.getElementById('stu-calendar-grid');
         if (!grid) return;
 
         grid.innerHTML = '';
 
-        const year = this.currentYear;
-        const month = this.currentMonth;
-        const firstDayOfMonth = new Date(year, month - 1, 1);
-        const daysInMonth = new Date(year, month, 0).getDate();
+        const firstDayOfMonth = new Date(this.currentYear, this.currentMonth - 1, 1);
+        const lastDayOfMonth = new Date(this.currentYear, this.currentMonth, 0);
+        const totalDays = lastDayOfMonth.getDate();
 
-        // Pazartesi = 1, Pazar = 7 yap
-        let startDay = firstDayOfMonth.getDay();
-        startDay = startDay === 0 ? 6 : startDay - 1; // Pazartesi 0 tabanlı
+        // Pazartesi = 0 başlangıcı
+        let startDayIndex = firstDayOfMonth.getDay() - 1;
+        if (startDayIndex === -1) startDayIndex = 6;
 
-        // Önceki ayın boşlukları
-        for (let i = 0; i < startDay; i++) {
+        // Önceki ay boşlukları
+        for (let i = 0; i < startDayIndex; i++) {
             const emptyCell = document.createElement('div');
-            emptyCell.className = 'bg-gray-50 border border-gray-100 rounded-lg opacity-40 calendar-day-cell';
+            emptyCell.className = 'h-16 rounded-lg bg-gray-50/50 border border-transparent';
             grid.appendChild(emptyCell);
         }
 
-        const isReadOnly = this.currentPlan && (this.currentPlan.approvalStatus === 2 || this.currentPlan.approvalStatus === 3);
+        // Gün hücreleri
+        for (let day = 1; day <= totalDays; day++) {
+            const dateObj = new Date(this.currentYear, this.currentMonth - 1, day);
+            const dayOfWeek = dateObj.getDay();
+            const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+            const dateStr = `${this.currentYear}-${String(this.currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isSelected = this.selectedDays.has(dateStr);
+            const selectedInfo = this.selectedDays.get(dateStr);
 
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dateObj = new Date(year, month - 1, day);
-            const dateKey = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-            const isHoliday = this.isOfficialHoliday(month, day);
-            const isSelected = this.selectedDays.has(dateKey);
-            const selectionData = this.selectedDays.get(dateKey);
+            // Ders çakışması günleri (Salı = 2, Perşembe = 4 simülasyonu)
+            const hasClassSchedule = (dayOfWeek === 2 || dayOfWeek === 4);
 
             const cell = document.createElement('div');
-            cell.className = 'calendar-day-cell border rounded-lg p-2 flex flex-col justify-between text-xs cursor-pointer relative';
+            let cellClass = 'h-16 p-1.5 rounded-lg border text-xs flex flex-col justify-between cursor-pointer transition select-none ';
 
-            if (isWeekend || isHoliday) {
-                // Kırmızı / Kapalı
-                cell.classList.add('bg-rose-50', 'border-rose-200', 'text-rose-700', 'disabled', 'cursor-not-allowed');
-                cell.innerHTML = `
-                    <div class="flex justify-between items-center font-bold">
-                        <span>${day}</span>
-                        <span class="text-[10px] uppercase">${isHoliday ? 'Tatil' : 'H.Sonu'}</span>
-                    </div>
-                    <div class="text-[10px] text-rose-500 font-medium truncate">${isHoliday || 'Kapalı'}</div>
-                `;
+            if (isWeekend) {
+                cellClass += 'bg-gray-50 border-gray-200 text-rose-400 cursor-not-allowed opacity-60';
             } else if (isSelected) {
-                // Yeşil / Seçilen Gün
-                const shiftName = selectionData.shiftType === 'Full' ? 'Tam Gün (5s)' : 
-                                  selectionData.shiftType === 'Morning' ? 'Sabah (4s)' : 'Öğle (4s)';
-
-                cell.classList.add('bg-emerald-50', 'border-emerald-300', 'text-emerald-900', 'shadow-sm');
-                cell.innerHTML = `
-                    <div class="flex justify-between items-center font-bold text-emerald-800">
-                        <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">${day}</span>
-                        <span class="text-[10px] font-semibold text-emerald-700"><i class="fas fa-check"></i></span>
-                    </div>
-                    <div class="mt-1 font-semibold text-[11px] text-emerald-800">${shiftName}</div>
-                    <div class="text-[10px] text-emerald-600">${selectionData.hasAttendance ? '✓ Devam Alındı' : 'Planlandı'}</div>
-                `;
-
-                if (!isReadOnly) {
-                    cell.onclick = () => this.openDayModal(dateKey, day, selectionData);
-                }
+                cellClass += 'bg-emerald-50 border-emerald-500 text-emerald-950 font-semibold shadow-xs';
             } else {
-                // Gri / Seçilebilir Boş Gün
-                cell.classList.add('bg-white', 'border-gray-200', 'hover:border-blue-400', 'hover:bg-blue-50/30');
-                cell.innerHTML = `
-                    <div class="flex justify-between items-center font-semibold text-gray-700">
-                        <span>${day}</span>
-                    </div>
-                    <div class="text-[10px] text-gray-400 mt-2">+ Gün Ekle</div>
-                `;
+                cellClass += 'bg-white border-gray-200 hover:border-gray-400 text-gray-800';
+            }
 
-                if (!isReadOnly) {
-                    cell.onclick = () => this.openDayModal(dateKey, day, null);
-                }
+            cell.className = cellClass;
+
+            cell.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-[11px]">${day}</span>
+                    ${hasClassSchedule && !isWeekend ? `<span title="Zorunlu Ders Günü" class="text-[9px] px-1 rounded bg-amber-100 text-amber-800 font-bold">Ders</span>` : ''}
+                </div>
+                <div class="text-[10px] truncate leading-tight">
+                    ${isSelected ? `<span class="text-emerald-700 font-bold">${selectedInfo.shiftType === 'Full' ? '5s Tam' : '4s'}</span>` : ''}
+                </div>
+            `;
+
+            if (!isWeekend) {
+                cell.addEventListener('click', () => this.openDayModal(dateStr, day, dayOfWeek, isSelected, selectedInfo));
             }
 
             grid.appendChild(cell);
         }
-
-        this.updatePlanSummaryHours();
     }
 
-    isOfficialHoliday(month, day) {
-        const holidays = {
-            '1-1': 'Yılbaşı',
-            '4-23': 'Ulusal Egemenlik',
-            '5-1': 'İşçi Bayramı',
-            '5-19': 'Gençlik ve Spor',
-            '7-15': 'Demokrasi Günü',
-            '8-30': 'Zafer Bayramı',
-            '10-29': 'Cumhuriyet Bayramı'
-        };
-        return holidays[`${month}-${day}`] || null;
-    }
+    openDayModal(dateStr, dayNumber, dayOfWeek, isSelected, selectedInfo) {
+        document.getElementById('stu-modal-date').value = dateStr;
+        const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+        const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+        
+        document.getElementById('stu-modal-date-title').textContent = `${dayNumber} ${months[this.currentMonth - 1]} ${this.currentYear} (${dayNames[dayOfWeek]})`;
+        
+        const shiftSelect = document.getElementById('stu-modal-shift');
+        const notesInput = document.getElementById('stu-modal-notes');
+        const removeBtn = document.getElementById('stu-modal-remove-btn');
 
-    openDayModal(dateKey, dayNumber, existingData) {
-        const modal = document.getElementById('student-day-modal');
-        const title = document.getElementById('day-modal-title');
-        const dateInput = document.getElementById('day-modal-date');
-        const shiftSelect = document.getElementById('day-modal-shift');
-        const notesInput = document.getElementById('day-modal-notes');
-        const removeBtn = document.getElementById('day-modal-remove-btn');
-        const weeklyWarningEl = document.getElementById('day-modal-weekly-warning');
-
-        if (!modal) return;
-
-        title.textContent = `${dayNumber} ${new Date(this.currentYear, this.currentMonth - 1, dayNumber).toLocaleDateString('tr-TR', { month: 'long' })} - Çalışma Günü`;
-        dateInput.value = dateKey;
-        shiftSelect.value = existingData ? existingData.shiftType : 'Morning';
-        notesInput.value = existingData ? (existingData.notes || '') : '';
-
-        // Haftalık 1-3 gün canlı denetimi
-        const weekCount = this.getWeekDayCount(dateKey, existingData ? dateKey : null);
-        if (weekCount >= 3 && !existingData) {
-            weeklyWarningEl.classList.remove('hidden');
-            weeklyWarningEl.innerHTML = `<i class="fas fa-exclamation-triangle mr-1"></i> Bu hafta için zaten ${weekCount} gün seçilmiş! Haftalık 3 gün kuralı sebebiyle yeni gün ekleyemezsiniz.`;
-            document.getElementById('day-modal-save-btn').disabled = true;
-        } else {
-            weeklyWarningEl.classList.add('hidden');
-            document.getElementById('day-modal-save-btn').disabled = false;
-        }
-
-        if (existingData) {
+        if (isSelected && selectedInfo) {
+            shiftSelect.value = selectedInfo.shiftType || 'Morning';
+            notesInput.value = selectedInfo.notes || '';
             removeBtn.classList.remove('hidden');
-            removeBtn.onclick = () => {
-                this.selectedDays.delete(dateKey);
-                Modal.close('student-day-modal');
-                this.renderCalendar();
-            };
         } else {
+            shiftSelect.value = 'Morning';
+            notesInput.value = '';
             removeBtn.classList.add('hidden');
         }
 
-        document.getElementById('day-modal-save-btn').onclick = () => {
-            const shiftType = shiftSelect.value;
-            const notes = notesInput.value.trim();
-            const plannedHours = shiftType === 'Full' ? 5.0 : 4.0;
+        // Çakışma kontrolünü tetikle
+        this.checkConflictWarning();
 
-            this.selectedDays.set(dateKey, {
-                date: dateKey,
-                shiftType,
-                plannedHours,
-                dayStatus: 1, // Planned
-                notes,
-                hasAttendance: false
-            });
-
-            Modal.close('student-day-modal');
-            this.renderCalendar();
-        };
-
-        Modal.open('student-day-modal');
+        document.getElementById('stu-day-modal').classList.remove('hidden');
     }
 
-    getWeekDayCount(targetDateStr, excludeDateStr = null) {
-        const targetDate = new Date(targetDateStr);
-        // Hedef tarihin haftasındaki Pazartesi gününü bul
-        const dayOfWeek = targetDate.getDay() === 0 ? 6 : targetDate.getDay() - 1;
-        const monday = new Date(targetDate);
-        monday.setDate(targetDate.getDate() - dayOfWeek);
+    checkConflictWarning() {
+        const dateStr = document.getElementById('stu-modal-date').value;
+        const shift = document.getElementById('stu-modal-shift').value;
+        const warningBox = document.getElementById('stu-modal-conflict-warning');
+        const warningText = document.getElementById('stu-modal-conflict-text');
+
+        if (!dateStr) return;
+
+        const dateObj = new Date(dateStr);
+        const dayOfWeek = dateObj.getDay(); // 2: Salı, 4: Perşembe
+
+        // Salı ve Perşembe günleri fakülte müfredatında tam gün ders vardır
+        if (dayOfWeek === 2) {
+            warningBox.classList.remove('hidden');
+            warningText.innerHTML = `<strong>Salı Günü Uyarısı:</strong> Saat 09:00 - 13:00 arasında zorunlu <em>'Yazılım Tasarımı ve Mimarisi'</em> dersiniz bulunmaktadır. ${shift === 'Morning' || shift === 'Full' ? '<span class="text-rose-700 font-bold block mt-0.5">⚠️ Seçtiğiniz vardiya sabah ders saatlerinizle çakışmaktadır!</span>' : 'Öğleden sonra vardiyası uygundur.'}`;
+        } else if (dayOfWeek === 4) {
+            warningBox.classList.remove('hidden');
+            warningText.innerHTML = `<strong>Perşembe Günü Uyarısı:</strong> Saat 13:00 - 17:00 arasında zorunlu <em>'Veritabanı Yönetim Sistemleri Laboratuvarı'</em> dersiniz bulunmaktadır. ${shift === 'Afternoon' || shift === 'Full' ? '<span class="text-rose-700 font-bold block mt-0.5">⚠️ Seçtiğiniz vardiya öğleden sonraki laboratuvar dersinizle çakışmaktadır!</span>' : 'Sabah vardiyası uygundur.'}`;
+        } else {
+            warningBox.classList.add('hidden');
+        }
+    }
+
+    saveDayModal() {
+        const dateStr = document.getElementById('stu-modal-date').value;
+        const shiftType = document.getElementById('stu-modal-shift').value;
+        const notes = document.getElementById('stu-modal-notes').value.trim();
+
+        // Haftalık 1-3 gün kuralı kontrolü
+        const targetDate = new Date(dateStr);
+        const dayCountInSameWeek = this.countDaysInWeek(targetDate, dateStr);
+
+        if (dayCountInSameWeek >= 3 && !this.selectedDays.has(dateStr)) {
+            AppToast.warning("İŞKUR Kuralı: Bir takvim haftasında en fazla 3 çalışma günü seçebilirsiniz!");
+            return;
+        }
+
+        this.selectedDays.set(dateStr, {
+            date: dateStr,
+            shiftType,
+            notes
+        });
+
+        document.getElementById('stu-day-modal').classList.add('hidden');
+        this.renderCalendarGrid();
+    }
+
+    removeDayModal() {
+        const dateStr = document.getElementById('stu-modal-date').value;
+        this.selectedDays.delete(dateStr);
+        document.getElementById('stu-day-modal').classList.add('hidden');
+        this.renderCalendarGrid();
+    }
+
+    countDaysInWeek(targetDate, excludeDateStr) {
+        // Hedef tarihin haftasındaki Pazartesi'yi bul
+        const d = new Date(targetDate);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d.setDate(diff));
         monday.setHours(0, 0, 0, 0);
 
         const sunday = new Date(monday);
@@ -614,342 +717,314 @@ class StudentDashboard {
 
         let count = 0;
         this.selectedDays.forEach((val, key) => {
-            if (key === excludeDateStr) return;
-            const d = new Date(key);
-            if (d >= monday && d <= sunday) {
-                count++;
+            if (key !== excludeDateStr) {
+                const cur = new Date(key);
+                if (cur >= monday && cur <= sunday) {
+                    count++;
+                }
             }
         });
-
         return count;
     }
 
-    updatePlanSummaryHours() {
-        let totalHours = 0;
-        let totalDays = 0;
-        this.selectedDays.forEach(day => {
-            totalHours += day.plannedHours || 4.0;
-            totalDays++;
-        });
-
-        const totalDaysEl = document.getElementById('student-plan-total-days');
-        const totalHoursEl = document.getElementById('student-plan-total-hours');
-
-        if (totalDaysEl) totalDaysEl.textContent = totalDays;
-        if (totalHoursEl) totalHoursEl.textContent = `${totalHours.toFixed(1)} Saat`;
-    }
-
     async savePlanDraft() {
-        if (this.selectedDays.size === 0) {
-            Toast.warning('Lütfen plana en az 1 çalışma günü ekleyiniz.');
-            return;
-        }
+        if (!this.profile || !this.profile.studentId) return;
 
         const days = [];
-        this.selectedDays.forEach(val => {
+        this.selectedDays.forEach((val) => {
             days.push({
                 date: val.date,
-                shiftType: val.shiftType === 'Full' ? 3 : val.shiftType === 'Afternoon' ? 2 : 1,
+                shiftType: val.shiftType,
                 notes: val.notes
             });
         });
 
         try {
-            const res = await ApiClient.Plan.createOrUpdate({
+            await ApiClient.Plan.createOrUpdate({
                 year: this.currentYear,
                 month: this.currentMonth,
-                days: days,
-                notes: 'Öğrenci arayüzünden kaydedildi'
+                days: days
+            });
+            AppToast.success("Çalışma planı taslağınız başarıyla kaydedildi.");
+            await this.loadMonthlyPlan();
+        } catch (err) {
+            AppToast.error(err.message || "Plan kaydedilemedi.");
+        }
+    }
+
+    async submitPlan() {
+        if (!this.currentPlan || !this.currentPlan.id) {
+            await this.savePlanDraft();
+        }
+
+        if (!this.currentPlan || !this.currentPlan.id) {
+            AppToast.warning("Lütfen önce gün seçimi yapınız.");
+            return;
+        }
+
+        try {
+            await ApiClient.Plan.submit(this.currentPlan.id);
+            AppToast.success("Aylık çalışma planınız danışman onayına sunuldu!");
+            await this.loadMonthlyPlan();
+        } catch (err) {
+            AppToast.error(err.message || "Onaya gönderilemedi.");
+        }
+    }
+
+    async loadLeaves() {
+        if (!this.profile || !this.profile.studentId) return;
+
+        try {
+            const res = await ApiClient.Leave.getStudentLeaves(this.profile.studentId);
+            this.leaves = res.data || [];
+            this.renderLeavesTable();
+        } catch (err) {
+            console.warn("İzinler çekilemedi:", err);
+        }
+    }
+
+    renderLeavesTable() {
+        const tbody = document.getElementById('stu-leaves-table-body');
+        if (!tbody) return;
+
+        if (this.leaves.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-gray-400">Henüz bir mazeret talebiniz bulunmuyor.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = this.leaves.map(l => {
+            const sDate = new Date(l.startDate).toLocaleDateString('tr-TR');
+            const eDate = new Date(l.endDate).toLocaleDateString('tr-TR');
+
+            let badge = `<span class="badge-minimal badge-warning">Değerlendirmede</span>`;
+            if (l.status === 1) badge = `<span class="badge-minimal badge-success">Onaylandı</span>`;
+            else if (l.status === 2) badge = `<span class="badge-minimal badge-danger">Reddedildi</span>`;
+
+            return `
+                <tr>
+                    <td><span class="badge-minimal badge-info">${l.leaveType || 'Mazeret'}</span></td>
+                    <td>${sDate} - ${eDate}</td>
+                    <td class="text-center font-bold">${l.totalDays} Gün</td>
+                    <td class="max-w-[200px] truncate">${l.reason || '-'}</td>
+                    <td class="text-center">${badge}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async handleCreateLeave() {
+        const startDate = document.getElementById('stu-leave-start').value;
+        const endDate = document.getElementById('stu-leave-end').value;
+        const leaveType = document.getElementById('stu-leave-type').value;
+        const reason = document.getElementById('stu-leave-reason').value.trim();
+        const btn = document.getElementById('stu-submit-leave-btn');
+
+        if (!startDate || !endDate || !reason) {
+            AppToast.warning("Lütfen tarihleri ve mazeret gerekçenizi eksiksiz doldurunuz.");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Gönderiliyor...</span>`;
+
+        try {
+            await ApiClient.Leave.create({
+                startDate,
+                endDate,
+                leaveType,
+                reason
             });
 
-            if (res.success) {
-                Toast.success('Çalışma planı taslağı başarıyla kaydedildi.');
-                await this.loadMonthlyPlan();
-            }
-        } catch (error) {
-            Toast.error(error.message || 'Plan kaydedilemedi.');
+            AppToast.success("Mazeret talebiniz Fakülte Sekreteri ve Danışmanınıza iletildi!");
+            document.getElementById('stu-leave-form').reset();
+            await this.loadProfile();
+            await this.loadLeaves();
+        } catch (err) {
+            AppToast.error(err.message || "İzin talebi oluşturulamadı.");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-paper-plane text-xs"></i> <span>Talebi Sekreterlik ve Danışmana Gönder</span>`;
         }
     }
 
-    async submitPlanForApproval() {
-        if (!this.currentPlan || !this.currentPlan.id) {
-            Toast.warning('Lütfen önce plan taslağını kaydediniz.');
+    async loadTasks() {
+        if (!this.profile || !this.profile.studentId) return;
+
+        try {
+            const res = await ApiClient.Task.getStudentTasks(this.profile.studentId);
+            this.tasks = res.data || [];
+            
+            const badge = document.getElementById('stu-tasks-badge');
+            const pendingTasks = this.tasks.filter(t => t.status !== 3); // 3 = Completed
+            if (badge) {
+                badge.textContent = pendingTasks.length;
+                if (pendingTasks.length > 0) badge.classList.remove('hidden');
+                else badge.classList.add('hidden');
+            }
+
+            document.getElementById('stu-stat-pending-tasks').textContent = `${pendingTasks.length} / ${this.tasks.length}`;
+            this.renderTasksList();
+        } catch (err) {
+            console.warn("Görevler çekilemedi:", err);
+        }
+    }
+
+    renderTasksList() {
+        const container = document.getElementById('stu-tasks-list');
+        if (!container) return;
+
+        if (this.tasks.length === 0) {
+            container.innerHTML = `<div class="py-6 text-center text-gray-400 text-xs md:col-span-2">Danışmanınız tarafından atanan aktif bir görev bulunmuyor.</div>`;
             return;
         }
 
-        try {
-            const res = await ApiClient.Plan.submit(this.currentPlan.id);
-            if (res.success) {
-                Toast.success('Çalışma planınız başarıyla danışman onayına sunuldu!');
-                await this.loadMonthlyPlan();
-            }
-        } catch (error) {
-            Toast.error(error.message || 'Plan onaya sunulamadı.');
-        }
-    }
+        container.innerHTML = this.tasks.map(t => {
+            const isCompleted = t.status === 3;
+            const dueStr = t.dueDate ? new Date(t.dueDate).toLocaleDateString('tr-TR') : 'Belirtilmedi';
 
-    // ==========================================
-    // 2. Devam Takibi ve QR Okutma (Check-in)
-    // ==========================================
-    openQrScanner() {
-        if (window.qrScanner) {
-            window.qrScanner.open();
-        } else {
-            Modal.open('qr-scanner-modal');
-        }
-    }
-
-    closeQrScanner() {
-        if (window.qrScanner) {
-            window.qrScanner.close();
-        } else {
-            Modal.close('qr-scanner-modal');
-        }
-    }
-
-    async handleQrScanned(tokenHash) {
-        this.closeQrScanner();
-        try {
-            Toast.info('Karekod doğrulandı, yoklama gönderiliyor...');
-            const res = await ApiClient.Attendance.checkIn(tokenHash);
-            if (res.success) {
-                Toast.success('Giriş devam kaydınız başarıyla alındı! İyi çalışmalar.');
-                await this.loadRecentAttendances();
-                await this.loadMonthlyPlan();
-            }
-        } catch (error) {
-            Toast.error(error.message || 'Karekod ile devam kaydı oluşturulamadı.');
-        }
-    }
-
-    async submitManualQrToken() {
-        const input = document.getElementById('manual-qr-token-input');
-        const token = input?.value?.trim();
-        if (!token) {
-            Toast.warning('Lütfen geçerli bir QR token giriniz.');
-            return;
-        }
-        await this.handleQrScanned(token);
-    }
-
-    async loadRecentAttendances() {
-        const studentId = AppStateManager.user?.studentId;
-        if (!studentId) return;
-
-        try {
-            const res = await ApiClient.Attendance.getStudentAttendances(studentId);
-            const container = document.getElementById('student-attendances-list');
-            if (!container) return;
-
-            if (!res.data || res.data.length === 0) {
-                container.innerHTML = '<div class="text-sm text-gray-400 py-3 text-center">Henüz devam kaydınız bulunmuyor.</div>';
-                return;
-            }
-
-            container.innerHTML = res.data.slice(0, 5).map(a => `
-                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100 text-xs">
-                    <div>
-                        <div class="font-semibold text-gray-800">${new Date(a.checkInTime).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-                        <div class="text-gray-500 mt-0.5">Giriş: <span class="font-medium text-emerald-600">${new Date(a.checkInTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span> | Çıkış: ${a.checkOutTime ? new Date(a.checkOutTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '<span class="text-amber-500">Çıkış Yapılmadı</span>'}</div>
+            return `
+                <div class="box-card p-4 space-y-2 border ${isCompleted ? 'border-gray-200 bg-gray-50/50' : 'border-teal-200 bg-white'}">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-bold text-gray-900">${t.title}</span>
+                        <span class="badge-minimal ${isCompleted ? 'badge-success' : 'badge-warning'}">
+                            ${isCompleted ? 'Tamamlandı' : 'Devam Ediyor'}
+                        </span>
                     </div>
-                    <div class="text-right">
-                        <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${a.verificationStatus === 1 ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}">${a.verificationStatusDescription}</span>
-                        ${!a.checkOutTime ? `<button onclick="window.StudentDashboardInstance.handleCheckOut('${a.id}')" class="block mt-1 text-xs text-blue-600 font-semibold hover:underline">Çıkış Yap</button>` : ''}
+                    <p class="text-xs text-gray-600 leading-relaxed">${t.description || '-'}</p>
+                    <div class="flex items-center justify-between pt-2 border-t border-gray-100 text-[11px] text-gray-400">
+                        <span>Teslim Tarihi: <strong>${dueStr}</strong></span>
+                        ${!isCompleted ? `
+                            <button onclick="window.studentDashboard.openTaskModal('${t.id}', '${t.title.replace(/'/g, "\\'")}')" 
+                                    class="px-2.5 py-1 bg-teal-800 hover:bg-teal-900 text-white rounded text-[11px] font-semibold transition">
+                                <i class="fa-solid fa-check mr-1"></i>Tamamla
+                            </button>
+                        ` : `
+                            <span class="text-emerald-700 font-semibold"><i class="fa-solid fa-circle-check mr-1"></i>Teslim Edildi</span>
+                        `}
                     </div>
                 </div>
-            `).join('');
-        } catch (e) {
-            console.error('Devam listesi alınamadı:', e);
+            `;
+        }).join('');
+    }
+
+    openTaskModal(taskId, title) {
+        document.getElementById('stu-task-modal-id').value = taskId;
+        document.getElementById('stu-task-modal-title').textContent = title;
+        document.getElementById('stu-task-modal-note').value = '';
+        document.getElementById('stu-task-modal').classList.remove('hidden');
+    }
+
+    async executeTaskComplete() {
+        const taskId = document.getElementById('stu-task-modal-id').value;
+        const note = document.getElementById('stu-task-modal-note').value.trim();
+
+        try {
+            await ApiClient.Task.updateStatus(taskId, 3, note || 'Görev tamamlandı.');
+            AppToast.success("Görev başarıyla tamamlandı olarak işaretlendi!");
+            document.getElementById('stu-task-modal').classList.add('hidden');
+            await this.loadTasks();
+        } catch (err) {
+            AppToast.error(err.message || "Görev durumu güncellenemedi.");
         }
     }
 
-    async handleCheckOut(attendanceId) {
+    async loadAttendances() {
+        if (!this.profile || !this.profile.studentId) return;
+
         try {
-            const res = await ApiClient.Attendance.checkOut(attendanceId);
-            if (res.success) {
-                Toast.success(`Çıkış yapıldı! Net Çalışma Süresi: ${res.data.actualHoursWorked} saat.`);
-                await this.loadRecentAttendances();
+            const res = await ApiClient.Attendance.getStudentAttendances(this.profile.studentId);
+            this.attendances = res.data || [];
+            
+            // Toplam çalışılan gün ve saat hesabı
+            const totalHours = this.attendances.reduce((acc, curr) => acc + (curr.actualHoursWorked || 5), 0);
+            const totalDays = this.attendances.length;
+
+            document.getElementById('stu-stat-worked-days').textContent = `${totalDays} Gün`;
+            document.getElementById('stu-stat-worked-hours').textContent = `${totalHours} Saat Çalışıldı`;
+
+            // Bugünkü yoklama kontrolü
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const todayAtt = this.attendances.find(a => a.checkInTime && a.checkInTime.startsWith(todayStr));
+
+            if (todayAtt) {
+                const inTime = new Date(todayAtt.checkInTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                const outTime = todayAtt.checkOutTime ? new Date(todayAtt.checkOutTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : 'Devam Ediyor';
+                document.getElementById('stu-stat-today-status').textContent = 'Yoklama Alındı';
+                document.getElementById('stu-stat-today-hours').textContent = `Giriş: ${inTime} | Çıkış: ${outTime}`;
             }
-        } catch (error) {
-            Toast.error(error.message || 'Çıkış işlemi başarısız oldu.');
+
+            this.renderHistoryTable();
+        } catch (err) {
+            console.warn("Devam kayıtları çekilemedi:", err);
         }
     }
 
-    // ==========================================
-    // 3. İzin Yönetimi ve Bakiye Takip
-    // ==========================================
-    async loadLeaveBalance() {
-        const studentId = AppStateManager.user?.studentId;
-        if (!studentId) return;
+    renderHistoryTable() {
+        const tbody = document.getElementById('stu-history-table-body');
+        if (!tbody) return;
 
+        if (this.attendances.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-gray-400">Henüz devam kaydınız bulunmuyor.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = this.attendances.map(a => {
+            const dateStr = new Date(a.checkInTime).toLocaleDateString('tr-TR');
+            const inTime = new Date(a.checkInTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+            const outTime = a.checkOutTime ? new Date(a.checkOutTime).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-';
+
+            return `
+                <tr>
+                    <td class="font-mono font-bold">${dateStr}</td>
+                    <td class="font-mono">${inTime}</td>
+                    <td class="font-mono">${outTime}</td>
+                    <td class="text-center font-bold text-teal-800">${a.actualHoursWorked || 5} Saat</td>
+                    <td class="text-center"><span class="badge-minimal badge-success">Dinamik QR</span></td>
+                    <td class="text-center"><span class="badge-minimal badge-success">Onaylandı</span></td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    async loadAnnouncements() {
         try {
-            const res = await ApiClient.Leave.getBalance(studentId);
-            const balance = res.data;
-            if (!balance) return;
-
-            // İlerleme çubuğunu güncelle
-            const usedDays = balance.usedLeaveDays;
-            const maxDays = balance.totalAnnualEntitlement || 10;
-            const remainingDays = balance.remainingLeaveDays;
-            const pct = Math.min(100, Math.round((usedDays / maxDays) * 100));
-
-            const progressBar = document.getElementById('student-leave-progress');
-            const usedDaysEl = document.getElementById('student-leave-used-days');
-            const remainingDaysEl = document.getElementById('student-leave-remaining-days');
-            const warningAlert = document.getElementById('student-leave-warning-alert');
-
-            if (progressBar) progressBar.style.width = `${pct}%`;
-            if (usedDaysEl) usedDaysEl.textContent = `${usedDays} Gün`;
-            if (remainingDaysEl) remainingDaysEl.textContent = `${remainingDays} Gün Kaldı`;
-
-            if (balance.hasLeaveWarning && warningAlert) {
-                warningAlert.classList.remove('hidden');
-                document.getElementById('student-leave-warning-text').textContent = balance.warningMessage || 'Yıllık izin hakkınız sınır seviyesine yaklaşmıştır.';
-            } else if (warningAlert) {
-                warningAlert.classList.add('hidden');
-            }
-
-            // İzin Geçmişini Yükle
-            await this.loadLeaveHistory();
-        } catch (e) {
-            console.error('İzin bakiyesi alınamadı:', e);
+            const res = await ApiClient.Academic.getAnnouncements();
+            this.announcements = res.data || [];
+            this.renderAnnouncementsList();
+        } catch (err) {
+            console.warn("Duyurular çekilemedi:", err);
         }
     }
 
-    async loadLeaveHistory() {
-        const studentId = AppStateManager.user?.studentId;
-        if (!studentId) return;
+    renderAnnouncementsList() {
+        const container = document.getElementById('stu-announcements-list');
+        if (!container) return;
 
-        try {
-            const res = await ApiClient.Leave.getStudentLeaves(studentId);
-            const tbody = document.getElementById('student-leaves-table-body');
-            if (!tbody) return;
-
-            if (!res.data || res.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="py-4 text-center text-gray-400 text-xs">Henüz izin talebiniz bulunmamaktadır.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = res.data.map(l => {
-                let badgeClass = 'bg-amber-100 text-amber-800';
-                if (l.status === 2 || l.status === 'Approved') badgeClass = 'bg-emerald-100 text-emerald-800';
-                if (l.status === 3 || l.status === 'Rejected') badgeClass = 'bg-rose-100 text-rose-800';
-
-                return `
-                    <tr class="border-b border-gray-100 hover:bg-gray-50 text-xs">
-                        <td class="py-3 px-3 font-medium text-gray-800">${new Date(l.startDate).toLocaleDateString('tr-TR')} - ${new Date(l.endDate).toLocaleDateString('tr-TR')}</td>
-                        <td class="py-3 px-3">${l.totalDays} Gün</td>
-                        <td class="py-3 px-3 text-gray-600">${l.leaveTypeDescription}</td>
-                        <td class="py-3 px-3 text-gray-500 max-w-xs truncate" title="${l.reason}">${l.reason}</td>
-                        <td class="py-3 px-3"><span class="px-2 py-0.5 rounded text-[10px] font-semibold ${badgeClass}">${l.statusDescription}</span></td>
-                    </tr>
-                `;
-            }).join('');
-        } catch (e) {
-            console.error(e);
+        if (this.announcements.length === 0) {
+            container.innerHTML = `<div class="py-6 text-center text-gray-400 text-xs">Şu anda aktif bir genel duyuru bulunmuyor.</div>`;
+            return;
         }
-    }
 
-    async handleCreateLeave(e) {
-        e.preventDefault();
-        const form = e.target;
-        const formData = new FormData(form);
-
-        const data = {
-            startDate: formData.get('startDate'),
-            endDate: formData.get('endDate'),
-            leaveType: parseInt(formData.get('leaveType') || '1'),
-            reason: formData.get('reason'),
-            documentUrl: formData.get('documentUrl') || null
-        };
-
-        try {
-            const res = await ApiClient.Leave.create(data);
-            if (res.success) {
-                Toast.success('İzin talebiniz başarıyla oluşturuldu ve danışman onayına iletildi.');
-                Modal.close('create-leave-modal');
-                form.reset();
-                await this.loadLeaveBalance();
-            }
-        } catch (error) {
-            Toast.error(error.message || 'İzin talebi oluşturulamadı.');
-        }
-    }
-
-    // ==========================================
-    // 4. Görevlerim Sekmesi
-    // ==========================================
-    async loadTasks() {
-        const studentId = AppStateManager.user?.studentId;
-        if (!studentId) return;
-
-        try {
-            const res = await ApiClient.Task.getStudentTasks(studentId);
-            const container = document.getElementById('student-tasks-container');
-            if (!container) return;
-
-            if (!res.data || res.data.length === 0) {
-                container.innerHTML = '<div class="col-span-2 text-center py-8 text-gray-400 text-sm">Danışmanınız tarafından atanmış aktif bir görev bulunmamaktadır.</div>';
-                return;
-            }
-
-            container.innerHTML = res.data.map(t => {
-                const isCompleted = t.status === 3 || t.status === 'Completed';
-                const isOverdue = new Date(t.dueDate) < new Date() && !isCompleted;
-
-                return `
-                    <div class="p-4 bg-white rounded-xl border border-gray-200 card-hover subtle-shadow flex flex-col justify-between">
-                        <div>
-                            <div class="flex justify-between items-start mb-2">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${isCompleted ? 'bg-emerald-100 text-emerald-800' : isOverdue ? 'bg-rose-100 text-rose-800' : 'bg-blue-100 text-blue-800'}">
-                                    ${isCompleted ? 'Tamamlandı' : isOverdue ? 'Süresi Geçti' : 'Bekliyor'}
-                                </span>
-                                <span class="text-xs text-gray-400"><i class="far fa-calendar-alt mr-1"></i> ${new Date(t.dueDate).toLocaleDateString('tr-TR')}</span>
-                            </div>
-                            <h4 class="font-bold text-gray-800 text-sm mb-1">${t.title}</h4>
-                            <p class="text-xs text-gray-600 line-clamp-3 mb-3">${t.description}</p>
-                            ${t.advisorEvaluationNote ? `
-                                <div class="bg-blue-50 border-l-2 border-blue-500 p-2 text-[11px] text-blue-900 rounded mb-2">
-                                    <span class="font-semibold">Danışman Değerlendirmesi:</span> ${t.advisorEvaluationNote}
-                                    ${t.advisorScore !== null ? `<span class="ml-2 font-bold text-emerald-700">(${t.advisorScore}/100)</span>` : ''}
-                                </div>
-                            ` : ''}
+        container.innerHTML = this.announcements.map(ann => {
+            const dateStr = new Date(ann.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' });
+            return `
+                <div class="box-card p-3 space-y-1.5 border ${ann.isUrgent ? 'border-rose-300 bg-rose-50/50' : 'border-gray-200 bg-white'}">
+                    <div class="flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-1.5">
+                            ${ann.isUrgent ? `<span class="badge-minimal badge-danger">ÖNEMLİ</span>` : ''}
+                            <span class="badge-minimal badge-neutral">${ann.category || 'Genel'}</span>
+                            <span class="font-bold text-gray-900">${ann.title}</span>
                         </div>
-                        <div class="pt-3 border-t border-gray-100 flex justify-between items-center text-xs">
-                            <span class="text-gray-500">Danışman: <span class="font-medium text-gray-700">${t.assignedByName}</span></span>
-                            ${!isCompleted ? `
-                                <button onclick="window.StudentDashboardInstance.openCompleteTaskModal('${t.id}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg shadow-sm">Tamamla</button>
-                            ` : '<span class="text-emerald-600 font-semibold text-xs"><i class="fas fa-check-circle mr-1"></i> Tamamlandı</span>'}
-                        </div>
+                        <span class="text-[10px] text-gray-400">${dateStr}</span>
                     </div>
-                `;
-            }).join('');
-        } catch (e) {
-            console.error('Görevler yüklenemedi:', e);
-        }
-    }
-
-    openCompleteTaskModal(taskId) {
-        document.getElementById('complete-task-id').value = taskId;
-        Modal.open('complete-task-modal');
-
-        document.getElementById('complete-task-submit-btn').onclick = async () => {
-            const note = document.getElementById('complete-task-note').value.trim();
-            try {
-                const res = await ApiClient.Task.updateStatus(taskId, 3, note); // 3: Completed
-                if (res.success) {
-                    Toast.success('Görev başarıyla tamamlandı olarak işaretlendi.');
-                    Modal.close('complete-task-modal');
-                    await this.loadTasks();
-                }
-            } catch (error) {
-                Toast.error(error.message || 'Görev güncellenemedi.');
-            }
-        };
+                    <p class="text-xs text-gray-600 leading-relaxed">${ann.content}</p>
+                    <div class="pt-1 text-[10px] text-gray-400 border-t border-gray-100 flex items-center justify-between">
+                        <span>Yayınlayan: <strong>${ann.createdByName || 'Fakülte Yönetimi'}</strong></span>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 }
 
-window.StudentDashboard = StudentDashboard;
 window.studentDashboard = new StudentDashboard();
-window.StudentDashboardInstance = window.studentDashboard;
-

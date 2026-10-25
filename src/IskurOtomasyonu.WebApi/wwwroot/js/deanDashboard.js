@@ -1,22 +1,21 @@
 // ============================================================================
-// Dekanlık & Fakülte Sekreterliği Paneli (Dean / Admin Dashboard)
-// Teknoloji Fakültesi İŞKUR Öğrenci Otomasyonu
+// Dekanlık Paneli (Dean Dashboard)
+// Selçuk Üniversitesi Teknoloji Fakültesi İŞKUR Otomasyonu
 // ============================================================================
 
 class DeanDashboard {
     constructor() {
         this.payrollData = [];
-        this.pendingLeaves = [];
         this.allStudents = [];
         this.departments = [];
-        this.units = [];
         this.riskWarnings = [];
-        this.selectedStudent = null;
-
+        this.selectedDepartmentId = '';
+        
         const now = new Date();
         this.currentYear = now.getFullYear();
         this.currentMonth = now.getMonth() + 1;
-        this.selectedDepartmentId = '';
+        this.hourlyWage = 185; // TL
+        this.totalSemesterBudget = 500000; // TL Dönemlik İŞKUR Ödenek Kotası
     }
 
     async init() {
@@ -30,260 +29,230 @@ class DeanDashboard {
         const container = document.getElementById('dean-dashboard-view');
         if (!container) return;
 
+        const months = [
+            'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+            'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+        ];
+
         container.innerHTML = `
             <div class="space-y-6 animate-fadeIn">
                 <!-- Başlık ve Üst Aksiyon Barı -->
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-4 border-b border-gray-200">
                     <div>
                         <div class="flex items-center gap-2">
-                            <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 font-bold">
-                                <i class="fa-solid fa-landmark text-lg"></i>
+                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 text-gray-800 font-bold border border-gray-300">
+                                <i class="fa-solid fa-landmark text-sm"></i>
                             </span>
-                            <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-                                Dekanlık & Fakülte Sekreterliği Yönetim Merkezi
+                            <h1 class="text-xl font-bold tracking-tight text-gray-900">
+                                Dekanlık Yönetim & İŞKUR Ödenek Takip Paneli
                             </h1>
                         </div>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                            İŞKUR resmi ay sonu puantaj dökümü, fakülte izin onay merkezi ve birim dağıtım yönetimi.
+                        <p class="text-xs text-gray-500 mt-1">
+                            Fakülte İŞKUR bütçe planlaması, toplam öğrenci istatistikleri ve 10 günlük izin aşımı takip merkezi.
                         </p>
                     </div>
 
                     <div class="flex items-center gap-2">
-                        <button id="dean-refresh-btn" class="px-3.5 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60 transition shadow-sm inline-flex items-center gap-2">
+                        <button id="dean-export-excel-btn" class="btn-secondary">
+                            <i class="fa-solid fa-file-excel text-emerald-600 text-xs"></i>
+                            <span>Excel Puantaj İndir</span>
+                        </button>
+                        <button id="dean-refresh-btn" class="btn-secondary">
                             <i class="fa-solid fa-arrows-rotate text-xs"></i>
-                            <span>Verileri Yenile</span>
+                            <span>Yenile</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- KPI İstatistik Kartları -->
+                <!-- KPI İstatistik Kartları (Minimal Gri-Beyaz Kutucuklar) -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                    <div class="box-card p-4 flex items-center justify-between">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Toplam İŞKUR Öğrencisi</p>
-                            <h3 id="dean-stat-students" class="text-2xl font-black text-slate-900 dark:text-white mt-1">-</h3>
-                            <p class="text-xs text-slate-500 mt-1">Fakülte Genelinde</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Toplam İŞKUR Öğrencisi</p>
+                            <h3 id="dean-stat-students" class="text-2xl font-bold text-gray-900 mt-0.5">-</h3>
+                            <p class="text-[11px] text-gray-400 mt-0.5">5 Bölüm Genelinde</p>
                         </div>
-                        <div class="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-user-graduate"></i>
+                        <div class="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-700 text-lg">
+                            <i class="fa-solid fa-users"></i>
                         </div>
                     </div>
 
-                    <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                    <div class="box-card p-4 flex items-center justify-between">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Bekleyen İzin Onayı</p>
-                            <h3 id="dean-stat-pending-leaves" class="text-2xl font-black text-amber-600 mt-1">-</h3>
-                            <p class="text-xs text-slate-500 mt-1">İnceleme Bekliyor</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Dönemlik Ödenek Bütçesi</p>
+                            <h3 id="dean-stat-budget" class="text-2xl font-bold text-teal-800 mt-0.5">${(this.totalSemesterBudget).toLocaleString('tr-TR')} ₺</h3>
+                            <p class="text-[11px] text-gray-400 mt-0.5">İŞKUR Tahsisli Ödenek</p>
                         </div>
-                        <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-envelope-open-text"></i>
+                        <div class="w-10 h-10 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-800 text-lg">
+                            <i class="fa-solid fa-wallet"></i>
                         </div>
                     </div>
 
-                    <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                    <div class="box-card p-4 flex items-center justify-between">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Kritik Riskli Öğrenci</p>
-                            <h3 id="dean-stat-risks" class="text-2xl font-black text-rose-600 mt-1">-</h3>
-                            <p class="text-xs text-slate-500 mt-1">Kota / Devamsızlık</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Gerçekleşen Harcama</p>
+                            <h3 id="dean-stat-spent" class="text-2xl font-bold text-gray-900 mt-0.5">-</h3>
+                            <p class="text-[11px] text-gray-400 mt-0.5">Hak Edilen Toplam Maaş</p>
                         </div>
-                        <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        <div class="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-700 text-lg">
+                            <i class="fa-solid fa-coins"></i>
                         </div>
                     </div>
 
-                    <div class="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+                    <div class="box-card p-4 flex items-center justify-between">
                         <div>
-                            <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Fiili Çalışma Saati</p>
-                            <h3 id="dean-stat-hours" class="text-2xl font-black text-emerald-600 mt-1">-</h3>
-                            <p class="text-xs text-slate-500 mt-1">Bu Ay Gerçekleşen</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">10 Gün İzin Aşımı Riski</p>
+                            <h3 id="dean-stat-risks" class="text-2xl font-bold text-rose-700 mt-0.5">-</h3>
+                            <p class="text-[11px] text-gray-400 mt-0.5">İlişik Kesme Adayı</p>
                         </div>
-                        <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xl">
-                            <i class="fa-solid fa-clock"></i>
+                        <div class="w-10 h-10 rounded-lg bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-700 text-lg">
+                            <i class="fa-solid fa-user-slash"></i>
                         </div>
                     </div>
                 </div>
 
                 <!-- Sekmeler (Tabs) -->
-                <div class="border-b border-slate-200 dark:border-slate-800">
+                <div class="border-b border-gray-200">
                     <nav class="flex space-x-6 overflow-x-auto" aria-label="Dean Tabs">
-                        <button id="dean-tab-payroll-btn" class="dean-tab-btn py-3 px-1 border-b-2 border-purple-600 font-semibold text-sm text-purple-600 dark:text-purple-400 flex items-center gap-2 whitespace-nowrap">
-                            <i class="fa-solid fa-file-invoice-dollar"></i>
-                            <span>Ay Sonu Resmi Puantaj & Bordro</span>
+                        <button id="dean-tab-budget-btn" class="dean-tab-btn py-2.5 px-1 border-b-2 border-teal-800 font-semibold text-xs text-teal-900 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-chart-pie"></i>
+                            <span>İŞKUR Ödenek Planlaması & Bölüm İstatistikleri</span>
                         </button>
-                        <button id="dean-tab-leaves-btn" class="dean-tab-btn py-3 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap">
-                            <i class="fa-solid fa-calendar-check"></i>
-                            <span>Fakülte İzin Onay Merkezi</span>
-                            <span id="dean-pending-leaves-badge" class="hidden px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 font-bold">0</span>
+                        <button id="dean-tab-termination-btn" class="dean-tab-btn py-2.5 px-1 border-b-2 border-transparent font-medium text-xs text-gray-500 hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-triangle-exclamation text-rose-600"></i>
+                            <span>10 Gün Yasal İzin Sınırını Aşanlar & İlişik Kesme</span>
+                            <span id="dean-risk-count-badge" class="hidden px-1.5 py-0.5 text-[10px] rounded-full bg-rose-100 text-rose-800 font-bold">0</span>
                         </button>
-                        <button id="dean-tab-students-btn" class="dean-tab-btn py-3 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap">
-                            <i class="fa-solid fa-building-user"></i>
-                            <span>Birim Dağıtımı & Öğrenci Yönetimi</span>
-                        </button>
-                        <button id="dean-tab-risks-btn" class="dean-tab-btn py-3 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-2 whitespace-nowrap">
-                            <i class="fa-solid fa-shield-halved"></i>
-                            <span>Risk & Devamsızlık Denetimi</span>
+                        <button id="dean-tab-payroll-btn" class="dean-tab-btn py-2.5 px-1 border-b-2 border-transparent font-medium text-xs text-gray-500 hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+                            <i class="fa-solid fa-file-invoice"></i>
+                            <span>Fakülte Resmi Puantaj Tablosu</span>
                         </button>
                     </nav>
                 </div>
 
-                <!-- 1. SEKME: AY SONU PUANTAJ VE RAPORLAMA -->
-                <div id="dean-pane-payroll" class="space-y-4">
-                    <!-- Filtreleme ve Export Barı -->
-                    <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-4">
-                        <div class="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-                            <!-- Yıl Seçimi -->
-                            <div>
-                                <select id="payroll-year-select" class="px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium">
-                                    <option value="2026">2026</option>
-                                    <option value="2025">2025</option>
-                                </select>
-                            </div>
-
-                            <!-- Ay Seçimi -->
-                            <div>
-                                <select id="payroll-month-select" class="px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium">
-                                    <option value="1">Ocak</option>
-                                    <option value="2">Şubat</option>
-                                    <option value="3">Mart</option>
-                                    <option value="4">Nisan</option>
-                                    <option value="5">Mayıs</option>
-                                    <option value="6">Haziran</option>
-                                    <option value="7">Temmuz</option>
-                                    <option value="8">Ağustos</option>
-                                    <option value="9">Eylül</option>
-                                    <option value="10">Ekim</option>
-                                    <option value="11">Kasım</option>
-                                    <option value="12">Aralık</option>
-                                </select>
-                            </div>
-
-                            <!-- Bölüm Filtresi -->
-                            <div>
-                                <select id="payroll-dept-select" class="px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium">
-                                    <option value="">Tüm Fakülte Bölümleri</option>
-                                </select>
-                            </div>
-
-                            <button id="payroll-filter-btn" class="px-4 py-2 text-sm font-semibold rounded-xl bg-purple-600 hover:bg-purple-700 text-white transition shadow-sm flex items-center gap-2">
-                                <i class="fa-solid fa-filter text-xs"></i>
-                                <span>Puantajı Getir</span>
-                            </button>
+                <!-- Filtreleme Çubuğu (Yıl, Ay, Bölüm) -->
+                <div class="box-card p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-gray-500 font-medium">Yıl:</span>
+                            <select id="dean-filter-year" class="px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-800 focus:outline-none focus:border-teal-700">
+                                <option value="2026" selected>2026</option>
+                                <option value="2025">2025</option>
+                            </select>
                         </div>
-
-                        <!-- Tek Tıkla Excel & CSV Dışa Aktarma Butonları -->
-                        <div class="flex items-center gap-2 w-full lg:w-auto justify-end">
-                            <button id="export-excel-btn" class="px-4 py-2 text-sm font-semibold rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm flex items-center gap-2">
-                                <i class="fa-solid fa-file-excel text-base"></i>
-                                <span>Excel (.xlsx) Olarak İndir</span>
-                            </button>
-                            <button id="export-csv-btn" class="px-4 py-2 text-sm font-semibold rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition shadow-sm flex items-center gap-2">
-                                <i class="fa-solid fa-file-csv text-base text-blue-500"></i>
-                                <span>CSV İndir</span>
-                            </button>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-gray-500 font-medium">Ay:</span>
+                            <select id="dean-filter-month" class="px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-800 focus:outline-none focus:border-teal-700">
+                                ${months.map((m, idx) => `<option value="${idx + 1}" ${idx + 1 === this.currentMonth ? 'selected' : ''}>${m}</option>`).join('')}
+                            </select>
                         </div>
-                    </div>
-
-                    <!-- Puantaj Veri Tablosu -->
-                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-sm">
-                                <thead>
-                                    <tr class="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/40 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                        <th class="py-3.5 px-3 text-center">Sıra</th>
-                                        <th class="py-3.5 px-3">TCKN</th>
-                                        <th class="py-3.5 px-4">Adı Soyadı</th>
-                                        <th class="py-3.5 px-3">Bölüm</th>
-                                        <th class="py-3.5 px-4 font-mono">IBAN (KVKK Korumalı)</th>
-                                        <th class="py-3.5 px-3 text-center">Planlanan</th>
-                                        <th class="py-3.5 px-3 text-center">Gerçekleşen (QR)</th>
-                                        <th class="py-3.5 px-3 text-center">İzinli Gün</th>
-                                        <th class="py-3.5 px-3 text-center font-bold">Toplam Saat</th>
-                                        <th class="py-3.5 px-3 text-center">Durum</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="dean-payroll-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
-                                    <tr>
-                                        <td colspan="10" class="py-12 text-center text-slate-400">
-                                            <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-purple-500"></i>
-                                            <p>Puantaj verileri yükleniyor...</p>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2. SEKME: İZİN ONAY MERKEZİ -->
-                <div id="dean-pane-leaves" class="hidden space-y-4">
-                    <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-                        <div>
-                            <h3 class="font-bold text-slate-900 dark:text-white">Fakülte Genelinde Onay Bekleyen İzin Talepleri</h3>
-                            <p class="text-xs text-slate-500 mt-0.5">Öğrencilerin sağlık, sınav ve mazeret gerekçeli izin başvurularını onaylayınız veya reddediniz.</p>
-                        </div>
-                    </div>
-
-                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-sm">
-                                <thead>
-                                    <tr class="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/40 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                        <th class="py-3.5 px-4">Öğrenci & No</th>
-                                        <th class="py-3.5 px-3">İzin Türü</th>
-                                        <th class="py-3.5 px-3">Tarih Aralığı</th>
-                                        <th class="py-3.5 px-3 text-center">Toplam Gün</th>
-                                        <th class="py-3.5 px-4">Mazeret Gerekçesi</th>
-                                        <th class="py-3.5 px-4 text-right">Aksiyonlar</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="dean-leaves-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
-                                    <tr>
-                                        <td colspan="6" class="py-8 text-center text-slate-400">
-                                            Bekleyen izin talebi bulunmamaktadır.
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. SEKME: BİRİM DAĞITIMI & ÖĞRENCİ YÖNETİMİ -->
-                <div id="dean-pane-students" class="hidden space-y-4">
-                    <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3">
-                        <div class="relative w-full md:w-80">
-                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-                                <i class="fa-solid fa-magnifying-glass text-xs"></i>
-                            </span>
-                            <input type="text" id="dean-student-search" placeholder="Öğrenci ara..." 
-                                class="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-slate-800 dark:text-slate-200">
-                        </div>
-
-                        <div class="flex items-center gap-3 w-full md:w-auto">
-                            <select id="dean-unit-filter" class="w-full md:w-auto px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
-                                <option value="">Tüm Birimler</option>
-                                <option value="unassigned">Birimsiz Öğrenciler</option>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-gray-500 font-medium">Bölüm:</span>
+                            <select id="dean-filter-dept" class="px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-800 focus:outline-none focus:border-teal-700 max-w-[200px]">
+                                <option value="">Tüm Bölümler</option>
                             </select>
                         </div>
                     </div>
+                </div>
 
-                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+                <!-- ========================================================= -->
+                <!-- 1. PANE: ÖDENEK PLANLAMASI & BÖLÜM İSTATİSTİKLERİ -->
+                <!-- ========================================================= -->
+                <div id="dean-pane-budget" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Ödenek Kullanım Özeti -->
+                        <div class="box-card p-4 space-y-3">
+                            <h3 class="font-bold text-xs text-gray-800 uppercase tracking-wider">İŞKUR Ödenek Tüketim Oranı</h3>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-gray-500">Tahsis Edilen Bütçe:</span>
+                                    <span class="font-bold font-mono">${this.totalSemesterBudget.toLocaleString('tr-TR')} ₺</span>
+                                </div>
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-gray-500">Kullanılan Toplam Tutar:</span>
+                                    <span id="dean-budget-spent-val" class="font-bold font-mono text-teal-800">0 ₺</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                    <div id="dean-budget-progress-bar" class="bg-teal-700 h-3 rounded-full transition-all duration-500" style="width: 15%"></div>
+                                </div>
+                                <div class="flex items-center justify-between text-[11px] text-gray-400">
+                                    <span id="dean-budget-percent">%0 Kullanıldı</span>
+                                    <span id="dean-budget-remaining">Kalan: ${this.totalSemesterBudget.toLocaleString('tr-TR')} ₺</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- İŞKUR Katılım ve Yasal Kural Notu -->
+                        <div class="box-card p-4 space-y-2">
+                            <h3 class="font-bold text-xs text-gray-800 uppercase tracking-wider">Yasal İŞKUR Mevzuatı</h3>
+                            <ul class="text-xs text-gray-600 space-y-1.5 list-disc list-inside">
+                                <li>Haftalık çalışma süresi en fazla <strong>3 gün</strong> ve günlük <strong>5 saat</strong>tir.</li>
+                                <li>Öğrenciler bir ayda en fazla <strong>60 saat</strong> fiili çalışma yapabilir.</li>
+                                <li>Yıllık mazeret/sağlık izin hakkı toplam <strong>10 iş günü</strong>dür.</li>
+                                <li>10 günlük yasal sınırı aşan öğrencilerin İŞKUR ilişiği Dekanlıkça derhal kesilir.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Bölüm Bazlı İstatistik ve Ödenek Dağılım Tablosu -->
+                    <div class="box-card overflow-hidden">
+                        <div class="p-3 border-b border-gray-200 bg-gray-50">
+                            <span class="font-bold text-xs text-gray-700">Bölüm Bazlı İŞKUR Öğrenci ve Ödenek Dağılımı</span>
+                        </div>
                         <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-sm">
+                            <table class="table-minimal text-xs">
                                 <thead>
-                                    <tr class="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/40 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                        <th class="py-3.5 px-4">Öğrenci No</th>
-                                        <th class="py-3.5 px-4">Ad Soyad</th>
-                                        <th class="py-3.5 px-3">Bölüm</th>
-                                        <th class="py-3.5 px-4">Mevcut Görev Birimi</th>
-                                        <th class="py-3.5 px-3 text-center">Durum</th>
-                                        <th class="py-3.5 px-4 text-right">İşlemler</th>
+                                    <tr>
+                                        <th>Bölüm Adı</th>
+                                        <th class="text-center">Öğrenci Sayısı</th>
+                                        <th class="text-center">Aylık Toplam Çalışma (Saat)</th>
+                                        <th class="text-right">Aylık Tahakkuk Eden Maaş (₺)</th>
+                                        <th class="text-center">Risk Taşıyan Öğrenci</th>
                                     </tr>
                                 </thead>
-                                <tbody id="dean-students-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                                <tbody id="dean-dept-stats-table-body">
                                     <tr>
-                                        <td colspan="6" class="py-8 text-center text-slate-400">
-                                            Öğrenci verileri yükleniyor...
+                                        <td colspan="5" class="py-6 text-center text-gray-400">Yükleniyor...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ========================================================= -->
+                <!-- 2. PANE: 10 GÜN İZİN AŞIMI & İLİŞİK KESME -->
+                <!-- ========================================================= -->
+                <div id="dean-pane-termination" class="space-y-4 hidden">
+                    <div class="box-card p-4 bg-rose-50/70 border-rose-200 text-rose-900 flex items-start gap-3">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-600 text-lg mt-0.5"></i>
+                        <div>
+                            <h4 class="font-bold text-xs">10 Günlük Yasal İzin Sınırı ve İlişik Kesme Kuralı</h4>
+                            <p class="text-xs text-rose-800 mt-0.5">
+                                İŞKUR protokolü gereğince, yıllık toplam 10 iş günü izin kotasını dolduran veya devamsızlık nedeniyle sınırı aşan öğrencilerin programa devam hakkı sona erer. Aşağıdaki listeden öğrencilerin İŞKUR ilişiğini resmi olarak kesebilirsiniz.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="box-card overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="table-minimal text-xs">
+                                <thead>
+                                    <tr>
+                                        <th>Öğrenci No & Ad Soyad</th>
+                                        <th>Bölüm</th>
+                                        <th>Danışman</th>
+                                        <th class="text-center">Kullanılan İzin</th>
+                                        <th class="text-center">Kalan İzin</th>
+                                        <th class="text-center">Devamsız Gün</th>
+                                        <th>Risk Durumu</th>
+                                        <th class="text-right">Dekanlık Aksiyonu</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dean-risk-table-body">
+                                    <tr>
+                                        <td colspan="8" class="py-8 text-center text-gray-400">
+                                            İzin aşımı olan öğrenci verileri inceleniyor...
                                         </td>
                                     </tr>
                                 </tbody>
@@ -292,38 +261,36 @@ class DeanDashboard {
                     </div>
                 </div>
 
-                <!-- 4. SEKME: RİSK & UYARI TABLOSU -->
-                <div id="dean-pane-risks" class="hidden space-y-4">
-                    <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-                        <div>
-                            <h3 class="font-bold text-slate-900 dark:text-white">Fakülte Genel Risk & Uyarı Paneli</h3>
-                            <p class="text-xs text-slate-500 mt-0.5">Yıllık izin hakkını doldurmak üzere olan (>7 gün) ve devamsızlık sınırına ulaşan öğrenciler.</p>
+                <!-- ========================================================= -->
+                <!-- 3. PANE: RESMİ PUANTAJ TABLOSU -->
+                <!-- ========================================================= -->
+                <div id="dean-pane-payroll" class="space-y-4 hidden">
+                    <div class="box-card overflow-hidden">
+                        <div class="p-3 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+                            <span class="font-bold text-xs text-gray-700">Resmi Fakülte Ay Sonu Puantaj Verisi</span>
+                            <button onclick="window.deanDashboard.exportCsv()" class="btn-secondary text-[11px] py-1 px-2.5">
+                                <i class="fa-solid fa-file-csv text-xs text-blue-600"></i>
+                                <span>CSV İndir</span>
+                            </button>
                         </div>
-                        <button id="dean-export-risk-excel-btn" class="px-4 py-2 text-sm font-semibold rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm flex items-center gap-2">
-                            <i class="fa-solid fa-file-excel"></i>
-                            <span>Risk Raporunu Excel Olarak İndir</span>
-                        </button>
-                    </div>
-
-                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
                         <div class="overflow-x-auto">
-                            <table class="w-full text-left border-collapse text-sm">
+                            <table class="table-minimal text-xs">
                                 <thead>
-                                    <tr class="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/40 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                        <th class="py-3.5 px-4">Öğrenci</th>
-                                        <th class="py-3.5 px-3">Bölüm</th>
-                                        <th class="py-3.5 px-3">Danışman</th>
-                                        <th class="py-3.5 px-3 text-center">Kullanılan İzin</th>
-                                        <th class="py-3.5 px-3 text-center">Devamsızlık</th>
-                                        <th class="py-3.5 px-3 text-center">Risk Bayrağı</th>
-                                        <th class="py-3.5 px-4">Değerlendirme Notu</th>
+                                    <tr>
+                                        <th>Öğrenci No</th>
+                                        <th>Ad Soyad</th>
+                                        <th>TCKN (KVKK)</th>
+                                        <th>Bölüm</th>
+                                        <th>Danışman</th>
+                                        <th class="text-center">Çalışılan Gün</th>
+                                        <th class="text-center">Toplam Saat</th>
+                                        <th class="text-right">Net Ödenecek Maaş</th>
+                                        <th>IBAN No</th>
                                     </tr>
                                 </thead>
-                                <tbody id="dean-risks-table-body" class="divide-y divide-slate-100 dark:divide-slate-800">
+                                <tbody id="dean-payroll-table-body">
                                     <tr>
-                                        <td colspan="7" class="py-8 text-center text-slate-400">
-                                            Riskli öğrenci bulunmamaktadır.
-                                        </td>
+                                        <td colspan="9" class="py-8 text-center text-gray-400">Yükleniyor...</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -332,74 +299,42 @@ class DeanDashboard {
                 </div>
             </div>
 
-            <!-- Birim Atama Modalı -->
-            <div id="assign-unit-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
-                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scaleIn">
-                    <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-                        <div class="flex items-center gap-2">
-                            <span class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center">
-                                <i class="fa-solid fa-building-circle-check text-sm"></i>
-                            </span>
-                            <h3 class="font-bold text-slate-900 dark:text-white">Fakülte Birimi Görevlendirmesi</h3>
-                        </div>
-                        <button id="close-assign-unit-modal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                            <i class="fa-solid fa-xmark text-lg"></i>
+            <!-- İlişik Kesme Onay Modalı -->
+            <div id="dean-terminate-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-xs hidden">
+                <div class="box-card bg-white p-5 max-w-sm w-full space-y-3 shadow-xl">
+                    <div class="flex items-center gap-2 text-rose-700">
+                        <i class="fa-solid fa-triangle-exclamation text-base"></i>
+                        <h3 class="font-bold text-sm">İŞKUR İlişiğini Kes</h3>
+                    </div>
+                    <p class="text-xs text-gray-600">
+                        <strong id="dean-terminate-student-name">Öğrenci</strong> adlı öğrencinin İŞKUR ilişiği kesilecektir. Bu işlem geri alınamaz.
+                    </p>
+                    <input type="hidden" id="dean-terminate-student-id">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-gray-500 mb-1">Gerekçe</label>
+                        <textarea id="dean-terminate-reason" rows="2" class="w-full p-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:border-rose-600">10 günlük yasal izin sınırının aşılması ve devamsızlık</textarea>
+                    </div>
+                    <div class="flex items-center justify-end gap-2 pt-2">
+                        <button type="button" onclick="document.getElementById('dean-terminate-modal').classList.add('hidden')" class="btn-secondary">
+                            Vazgeç
+                        </button>
+                        <button type="button" id="dean-confirm-terminate-btn" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold">
+                            İlişiği Kes
                         </button>
                     </div>
-
-                    <form id="assign-unit-form" class="mt-4 space-y-4">
-                        <input type="hidden" id="assign-unit-student-id">
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Öğrenci</label>
-                            <div id="assign-unit-student-name" class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 font-bold text-slate-800 dark:text-slate-200 text-sm">
-                                -
-                            </div>
-                        </div>
-
-                        <div>
-                            <label for="assign-unit-select" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                                Görevlendirilecek Birim <span class="text-rose-500">*</span>
-                            </label>
-                            <select id="assign-unit-select" required class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/30">
-                                <option value="">Birim Seçiniz...</option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label for="assign-unit-note" class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Görevlendirme Açıklaması</label>
-                            <textarea id="assign-unit-note" rows="2" placeholder="Örn: 2026 Bahar dönemi bilgi işlem teknik destek görevlendirmesi" 
-                                class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/30"></textarea>
-                        </div>
-
-                        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
-                            <button type="button" id="cancel-assign-unit-btn" class="px-4 py-2 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition">
-                                İptal
-                            </button>
-                            <button type="submit" id="submit-assign-unit-btn" class="px-5 py-2 text-sm font-medium rounded-xl bg-purple-600 hover:bg-purple-700 text-white transition shadow-sm flex items-center gap-2">
-                                <i class="fa-solid fa-check text-xs"></i>
-                                <span>Görevi Kaydet</span>
-                            </button>
-                        </div>
-                    </form>
                 </div>
             </div>
         `;
     }
 
     attachEventListeners() {
-        // Yenile Butonu
-        document.getElementById('dean-refresh-btn')?.addEventListener('click', () => {
-            this.loadInitialData();
-            AppToast.info("Veriler yenileniyor...");
-        });
+        document.getElementById('dean-refresh-btn')?.addEventListener('click', () => this.loadInitialData());
 
         // Sekmeler
         const tabs = [
-            { btn: 'dean-tab-payroll-btn', pane: 'dean-pane-payroll' },
-            { btn: 'dean-tab-leaves-btn', pane: 'dean-pane-leaves' },
-            { btn: 'dean-tab-students-btn', pane: 'dean-pane-students' },
-            { btn: 'dean-tab-risks-btn', pane: 'dean-pane-risks' }
+            { btn: 'dean-tab-budget-btn', pane: 'dean-pane-budget' },
+            { btn: 'dean-tab-termination-btn', pane: 'dean-pane-termination' },
+            { btn: 'dean-tab-payroll-btn', pane: 'dean-pane-payroll' }
         ];
 
         tabs.forEach(t => {
@@ -408,439 +343,196 @@ class DeanDashboard {
                     const b = document.getElementById(o.btn);
                     const p = document.getElementById(o.pane);
                     if (o.btn === t.btn) {
-                        b?.classList.add('border-purple-600', 'text-purple-600', 'dark:text-purple-400');
-                        b?.classList.remove('border-transparent', 'text-slate-500');
+                        b?.classList.add('border-teal-800', 'text-teal-900', 'font-semibold');
+                        b?.classList.remove('border-transparent', 'text-gray-500');
                         p?.classList.remove('hidden');
                     } else {
-                        b?.classList.remove('border-purple-600', 'text-purple-600', 'dark:text-purple-400');
-                        b?.classList.add('border-transparent', 'text-slate-500');
+                        b?.classList.remove('border-teal-800', 'text-teal-900', 'font-semibold');
+                        b?.classList.add('border-transparent', 'text-gray-500');
                         p?.classList.add('hidden');
                     }
                 });
             });
         });
 
-        // Puantaj Ay & Yıl Filtresi
-        const monthSelect = document.getElementById('payroll-month-select');
-        const yearSelect = document.getElementById('payroll-year-select');
-        if (monthSelect) monthSelect.value = this.currentMonth;
-        if (yearSelect) yearSelect.value = this.currentYear;
-
-        document.getElementById('payroll-filter-btn')?.addEventListener('click', () => {
-            this.currentYear = parseInt(document.getElementById('payroll-year-select')?.value || this.currentYear);
-            this.currentMonth = parseInt(document.getElementById('payroll-month-select')?.value || this.currentMonth);
-            this.selectedDepartmentId = document.getElementById('payroll-dept-select')?.value || '';
+        // Filtreler
+        document.getElementById('dean-filter-year')?.addEventListener('change', (e) => {
+            this.currentYear = parseInt(e.target.value);
             this.loadPayrollData();
         });
 
-        // 1-Tıkla Excel İndirme Butonu
-        document.getElementById('export-excel-btn')?.addEventListener('click', async () => {
-            try {
-                AppToast.info("Excel puantaj dosyası hazırlanıyor...");
-                await ApiClient.Report.downloadExcel(this.currentYear, this.currentMonth, this.selectedDepartmentId || null);
-                AppToast.success("Excel puantaj dosyası başarıyla indirildi.");
-            } catch (err) {
-                console.error("Excel indirme hatası:", err);
-                AppToast.error("Excel indirilemedi: " + err.message);
-            }
+        document.getElementById('dean-filter-month')?.addEventListener('change', (e) => {
+            this.currentMonth = parseInt(e.target.value);
+            this.loadPayrollData();
         });
 
-        // 1-Tıkla CSV İndirme Butonu
-        document.getElementById('export-csv-btn')?.addEventListener('click', async () => {
-            try {
-                AppToast.info("CSV puantaj dosyası hazırlanıyor...");
-                await ApiClient.Report.downloadCsv(this.currentYear, this.currentMonth, this.selectedDepartmentId || null);
-                AppToast.success("CSV dosyası başarıyla indirildi.");
-            } catch (err) {
-                console.error("CSV indirme hatası:", err);
-                AppToast.error("CSV indirilemedi: " + err.message);
-            }
+        document.getElementById('dean-filter-dept')?.addEventListener('change', (e) => {
+            this.selectedDepartmentId = e.target.value;
+            this.renderFilteredViews();
         });
 
-        // Risk Excel İndirme
-        document.getElementById('dean-export-risk-excel-btn')?.addEventListener('click', async () => {
-            try {
-                AppToast.info("Risk raporu Excel dosyası hazırlanıyor...");
-                await ApiClient.Report.downloadRiskExcel(this.selectedDepartmentId || null);
-                AppToast.success("Risk raporu indirildi.");
-            } catch (err) {
-                AppToast.error("Risk raporu indirilemedi: " + err.message);
-            }
-        });
+        // Dışa Aktarma
+        document.getElementById('dean-export-excel-btn')?.addEventListener('click', () => this.exportExcel());
 
-        // Öğrenci arama
-        document.getElementById('dean-student-search')?.addEventListener('input', () => this.filterStudents());
-        document.getElementById('dean-unit-filter')?.addEventListener('change', () => this.filterStudents());
-
-        // Birim Atama Modalı
-        const modal = document.getElementById('assign-unit-modal');
-        document.getElementById('close-assign-unit-modal')?.addEventListener('click', () => modal?.classList.add('hidden'));
-        document.getElementById('cancel-assign-unit-btn')?.addEventListener('click', () => modal?.classList.add('hidden'));
-        document.getElementById('assign-unit-form')?.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await this.handleAssignUnit();
-        });
+        // İlişik Kes Onay Butonu
+        document.getElementById('dean-confirm-terminate-btn')?.addEventListener('click', () => this.executeTermination());
     }
 
     async loadInitialData() {
         try {
-            // Bölümler, Birimler, Bekleyen İzinler ve Tüm Öğrencileri paralel çek
-            const [deptsRes, unitsRes, leavesRes, studentsRes, risksRes] = await Promise.all([
-                ApiClient.Academic.getDepartments(),
-                ApiClient.Academic.getUnits(),
-                ApiClient.Leave.getPending(),
-                ApiClient.Academic.getAllStudents(),
-                ApiClient.Report.getRiskWarnings()
+            await Promise.all([
+                this.loadDepartments(),
+                this.loadAllStudents(),
+                this.loadPayrollData(),
+                this.loadRiskWarnings()
             ]);
+        } catch (err) {
+            console.error("Dekanlık verileri yüklenirken hata:", err);
+            AppToast.error("Veriler yüklenirken bir sorun oluştu.");
+        }
+    }
 
-            this.departments = deptsRes.data || [];
-            this.units = unitsRes.data || [];
-            this.pendingLeaves = leavesRes.data || [];
-            this.allStudents = studentsRes.data || [];
-            this.riskWarnings = risksRes.data || [];
+    async loadDepartments() {
+        try {
+            const res = await ApiClient.Academic.getDepartments();
+            this.departments = res.data || [];
+            const select = document.getElementById('dean-filter-dept');
+            if (select) {
+                select.innerHTML = '<option value="">Tüm Bölümler</option>';
+                this.departments.forEach(d => {
+                    const opt = document.createElement('option');
+                    opt.value = d.id;
+                    opt.textContent = d.name;
+                    select.appendChild(opt);
+                });
+            }
+        } catch (err) {
+            console.warn("Bölümler yüklenemedi:", err);
+        }
+    }
 
-            this.populateSelects();
-            this.updateKpis();
-            this.renderLeavesTable(this.pendingLeaves);
-            this.renderStudentsTable(this.allStudents);
-            this.renderRisksTable(this.riskWarnings);
-
-            // Puantaj tablosunu yükle
-            await this.loadPayrollData();
-
-        } catch (error) {
-            console.error("Dekanlık ilk veri yükleme hatası:", error);
-            AppToast.error("Veriler yüklenirken bir hata oluştu: " + error.message);
+    async loadAllStudents() {
+        try {
+            const res = await ApiClient.Academic.getAllStudents();
+            this.allStudents = res.data || [];
+            document.getElementById('dean-stat-students').textContent = this.allStudents.length;
+        } catch (err) {
+            console.warn("Öğrenciler yüklenemedi:", err);
         }
     }
 
     async loadPayrollData() {
-        const tbody = document.getElementById('dean-payroll-table-body');
-        if (tbody) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="10" class="py-12 text-center text-slate-400">
-                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-purple-500"></i>
-                        <p>Puantaj verileri hesaplanıyor...</p>
-                    </td>
-                </tr>
-            `;
-        }
-
         try {
-            const filter = {
+            const res = await ApiClient.Report.getMonthlySummary({
                 year: this.currentYear,
                 month: this.currentMonth,
                 departmentId: this.selectedDepartmentId || null
-            };
-
-            const res = await ApiClient.Report.getMonthlySummary(filter);
+            });
             this.payrollData = res.data || [];
-            this.renderPayrollTable(this.payrollData);
-
-            // KPI'da toplam gerçekleşen saati güncelle
-            const totalHours = this.payrollData.reduce((acc, curr) => acc + (curr.actualWorkingHours || 0), 0);
-            document.getElementById('dean-stat-hours').textContent = `${totalHours} Saat`;
-
-        } catch (error) {
-            console.error("Puantaj yükleme hatası:", error);
-            if (tbody) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="10" class="py-8 text-center text-rose-500">
-                            Puantaj verileri alınamadı: ${error.message}
-                        </td>
-                    </tr>
-                `;
-            }
+            this.renderFilteredViews();
+        } catch (err) {
+            console.warn("Puantaj verileri yüklenemedi:", err);
+            this.payrollData = [];
+            this.renderFilteredViews();
         }
     }
 
-    populateSelects() {
-        // Puantaj bölüm filtresi
-        const deptSelect = document.getElementById('payroll-dept-select');
-        if (deptSelect) {
-            deptSelect.innerHTML = '<option value="">Tüm Fakülte Bölümleri</option>';
-            this.departments.forEach(d => {
-                const opt = document.createElement('option');
-                opt.value = d.id;
-                opt.textContent = d.name;
-                deptSelect.appendChild(opt);
-            });
-        }
-
-        // Birim select kutusu ve filtresi
-        const unitSelect = document.getElementById('assign-unit-select');
-        const unitFilter = document.getElementById('dean-unit-filter');
-        if (unitSelect) {
-            unitSelect.innerHTML = '<option value="">Birim Seçiniz...</option>';
-            if (unitFilter) {
-                unitFilter.innerHTML = '<option value="">Tüm Birimler</option><option value="unassigned">Birimsiz Öğrenciler</option>';
-            }
-
-            this.units.forEach(u => {
-                const opt = document.createElement('option');
-                opt.value = u.id;
-                opt.textContent = `${u.name} (Kapasite: ${u.capacity})`;
-                unitSelect.appendChild(opt);
-
-                if (unitFilter) {
-                    const fOpt = document.createElement('option');
-                    fOpt.value = u.id;
-                    fOpt.textContent = u.name;
-                    unitFilter.appendChild(fOpt);
-                }
-            });
-        }
-    }
-
-    updateKpis() {
-        document.getElementById('dean-stat-students').textContent = this.allStudents.length;
-        document.getElementById('dean-stat-pending-leaves').textContent = this.pendingLeaves.length;
-        document.getElementById('dean-stat-risks').textContent = this.riskWarnings.length;
-
-        const badge = document.getElementById('dean-pending-leaves-badge');
-        if (badge) {
-            if (this.pendingLeaves.length > 0) {
-                badge.textContent = this.pendingLeaves.length;
-                badge.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden');
-            }
-        }
-    }
-
-    renderPayrollTable(data) {
-        const tbody = document.getElementById('dean-payroll-table-body');
-        if (!tbody) return;
-
-        if (data.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="10" class="py-12 text-center text-slate-400">
-                        <i class="fa-solid fa-file-invoice text-3xl mb-2 text-slate-300"></i>
-                        <p class="font-medium">Seçili ay ve kriterlere ait puantaj kaydı bulunamadı.</p>
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        tbody.innerHTML = data.map((item, index) => {
-            const statusClass = item.status === 'Active' 
-                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' 
-                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
-
-            return `
-                <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition">
-                    <td class="py-3 px-3 text-center text-slate-400 font-medium">${index + 1}</td>
-                    <td class="py-3 px-3 font-mono font-bold text-slate-800 dark:text-slate-200">
-                        ${item.tcNo || '***'}
-                    </td>
-                    <td class="py-3 px-4">
-                        <div class="font-bold text-slate-900 dark:text-white">${item.fullName}</div>
-                        <div class="text-xs font-mono text-slate-400">${item.studentNumber}</div>
-                    </td>
-                    <td class="py-3 px-3 text-xs text-slate-600 dark:text-slate-300">
-                        ${item.departmentName || '-'}
-                    </td>
-                    <td class="py-3 px-4 font-mono text-xs text-slate-700 dark:text-slate-300">
-                        ${item.iban || 'TR** **** **** ****'}
-                    </td>
-                    <td class="py-3 px-3 text-center font-semibold text-slate-700 dark:text-slate-300">
-                        ${item.plannedDays} Gün
-                    </td>
-                    <td class="py-3 px-3 text-center font-bold text-indigo-600 dark:text-indigo-400">
-                        ${item.actualDays} Gün
-                    </td>
-                    <td class="py-3 px-3 text-center text-amber-600 dark:text-amber-400 font-semibold">
-                        ${item.approvedLeaveDays} Gün
-                    </td>
-                    <td class="py-3 px-3 text-center font-black text-emerald-600 dark:text-emerald-400 text-sm">
-                        ${item.actualWorkingHours} Saat
-                    </td>
-                    <td class="py-3 px-3 text-center">
-                        <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${statusClass}">
-                            ${item.status === 'Active' ? 'Aktif' : item.status}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
-
-    renderLeavesTable(leaves) {
-        const tbody = document.getElementById('dean-leaves-table-body');
-        if (!tbody) return;
-
-        if (leaves.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="py-10 text-center text-slate-400">
-                        <i class="fa-solid fa-check-circle text-2xl mb-2 text-emerald-500"></i>
-                        <p class="font-medium text-slate-600 dark:text-slate-300">Tüm izin talepleri incelenmiş ve sonuçlandırılmıştır.</p>
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        tbody.innerHTML = leaves.map(l => {
-            const start = new Date(l.startDate).toLocaleDateString('tr-TR');
-            const end = new Date(l.endDate).toLocaleDateString('tr-TR');
-
-            return `
-                <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition">
-                    <td class="py-3.5 px-4">
-                        <div class="font-bold text-slate-900 dark:text-white">${l.studentName || 'Öğrenci'}</div>
-                        <div class="text-xs text-slate-400">${l.departmentName || '-'}</div>
-                    </td>
-                    <td class="py-3.5 px-3">
-                        <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
-                            ${l.leaveType || 'Mazeret İzni'}
-                        </span>
-                    </td>
-                    <td class="py-3.5 px-3 text-xs font-medium text-slate-700 dark:text-slate-300">
-                        ${start} - ${end}
-                    </td>
-                    <td class="py-3.5 px-3 text-center font-bold text-slate-900 dark:text-white">
-                        ${l.requestedDays} Gün
-                    </td>
-                    <td class="py-3.5 px-4 text-xs text-slate-600 dark:text-slate-300 max-w-xs truncate" title="${l.reason || ''}">
-                        ${l.reason || '-'}
-                    </td>
-                    <td class="py-3.5 px-4 text-right">
-                        <div class="flex items-center justify-end gap-2">
-                            <button onclick="window.deanDashboard.evaluateLeave('${l.id}', 'Approved')" 
-                                class="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold transition shadow-sm inline-flex items-center gap-1">
-                                <i class="fa-solid fa-check"></i>
-                                <span>Onayla</span>
-                            </button>
-                            <button onclick="window.deanDashboard.evaluateLeave('${l.id}', 'Rejected')" 
-                                class="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-xs font-semibold transition inline-flex items-center gap-1">
-                                <i class="fa-solid fa-xmark"></i>
-                                <span>Reddet</span>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-    }
-
-    async evaluateLeave(leaveId, decision) {
-        let rejectionReason = null;
-        if (decision === 'Rejected') {
-            rejectionReason = prompt("Lütfen izin talebinin ret gerekçesini giriniz:");
-            if (rejectionReason === null) return; // İptal edildi
-        }
-
+    async loadRiskWarnings() {
         try {
-            await ApiClient.Leave.evaluate(leaveId, decision, rejectionReason);
-            AppToast.success(decision === 'Approved' ? "İzin talebi onaylandı." : "İzin talebi reddedildi.");
+            const res = await ApiClient.Report.getRiskWarnings();
+            this.riskWarnings = res.data || [];
             
-            // Bekleyen izinleri yeniden yükle
-            const leavesRes = await ApiClient.Leave.getPending();
-            this.pendingLeaves = leavesRes.data || [];
-            this.renderLeavesTable(this.pendingLeaves);
-            this.updateKpis();
+            // 10 günü aşan veya kritik riski olanlar
+            const criticalRisks = this.riskWarnings.filter(r => (r.usedLeaveDays >= 10 || r.remainingLeaveDays <= 0 || r.riskLevel === 'Kritik'));
+            
+            const badge = document.getElementById('dean-risk-count-badge');
+            if (badge) {
+                badge.textContent = criticalRisks.length;
+                if (criticalRisks.length > 0) badge.classList.remove('hidden');
+                else badge.classList.add('hidden');
+            }
 
-        } catch (error) {
-            console.error("İzin değerlendirme hatası:", error);
-            AppToast.error("İşlem gerçekleştirilemedi: " + error.message);
+            document.getElementById('dean-stat-risks').textContent = criticalRisks.length;
+            this.renderRiskTable(this.riskWarnings);
+        } catch (err) {
+            console.warn("Risk uyarıları yüklenemedi:", err);
         }
     }
 
-    filterStudents() {
-        const search = document.getElementById('dean-student-search')?.value.toLowerCase().trim() || '';
-        const unitFilter = document.getElementById('dean-unit-filter')?.value || '';
+    renderFilteredViews() {
+        let filtered = [...this.payrollData];
+        if (this.selectedDepartmentId) {
+            filtered = filtered.filter(p => {
+                const s = this.allStudents.find(stud => stud.studentId === p.studentId);
+                return s && s.departmentId === this.selectedDepartmentId;
+            });
+        }
 
-        const filtered = this.allStudents.filter(s => {
-            const matchSearch = !search || 
-                s.fullName.toLowerCase().includes(search) || 
-                (s.studentNumber && s.studentNumber.toLowerCase().includes(search));
+        // Toplam harcama ve bütçe hesaplama
+        const totalHours = filtered.reduce((acc, curr) => acc + (curr.totalHoursWorked || 0), 0);
+        const totalSpent = totalHours * this.hourlyWage;
+        const budgetPercent = Math.min(100, Math.round((totalSpent / this.totalSemesterBudget) * 100));
 
-            let matchUnit = true;
-            if (unitFilter === 'unassigned') {
-                matchUnit = !s.unitId;
-            } else if (unitFilter) {
-                matchUnit = s.unitId === unitFilter;
-            }
+        document.getElementById('dean-stat-spent').textContent = `${totalSpent.toLocaleString('tr-TR')} ₺`;
+        document.getElementById('dean-budget-spent-val').textContent = `${totalSpent.toLocaleString('tr-TR')} ₺`;
+        document.getElementById('dean-budget-percent').textContent = `%${budgetPercent} Kullanıldı`;
+        document.getElementById('dean-budget-remaining').textContent = `Kalan: ${(Math.max(0, this.totalSemesterBudget - totalSpent)).toLocaleString('tr-TR')} ₺`;
+        
+        const progressBar = document.getElementById('dean-budget-progress-bar');
+        if (progressBar) progressBar.style.width = `${budgetPercent}%`;
 
-            return matchSearch && matchUnit;
-        });
-
-        this.renderStudentsTable(filtered);
+        this.renderDeptStatsTable(filtered);
+        this.renderPayrollTable(filtered);
     }
 
-    renderStudentsTable(studentsList) {
-        const tbody = document.getElementById('dean-students-table-body');
+    renderDeptStatsTable(payroll) {
+        const tbody = document.getElementById('dean-dept-stats-table-body');
         if (!tbody) return;
 
-        if (studentsList.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="py-8 text-center text-slate-400">
-                        Kayıtlı öğrenci bulunamadı.
-                    </td>
-                </tr>
-            `;
+        if (this.departments.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-400">Bölüm verisi bulunamadı.</td></tr>`;
             return;
         }
 
-        tbody.innerHTML = studentsList.map(s => {
-            const hasUnit = !!s.unitId;
+        tbody.innerHTML = this.departments.map(dept => {
+            const deptStudents = this.allStudents.filter(s => s.departmentId === dept.id);
+            const deptPayroll = payroll.filter(p => {
+                const s = this.allStudents.find(stud => stud.studentId === p.studentId);
+                return s && s.departmentId === dept.id;
+            });
+
+            const totalHours = deptPayroll.reduce((acc, curr) => acc + (curr.totalHoursWorked || 0), 0);
+            const totalWage = totalHours * this.hourlyWage;
+            const deptRisks = this.riskWarnings.filter(r => {
+                const s = this.allStudents.find(stud => stud.studentId === r.studentId);
+                return s && s.departmentId === dept.id && (r.usedLeaveDays >= 10 || r.remainingLeaveDays <= 0);
+            });
 
             return `
-                <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition">
-                    <td class="py-3 px-4 font-mono font-bold text-slate-800 dark:text-slate-200">
-                        ${s.studentNumber || '-'}
-                    </td>
-                    <td class="py-3 px-4 font-bold text-slate-900 dark:text-white">
-                        ${s.fullName}
-                    </td>
-                    <td class="py-3 px-3 text-xs text-slate-600 dark:text-slate-300">
-                        ${s.departmentName || '-'}
-                    </td>
-                    <td class="py-3 px-4">
-                        ${hasUnit 
-                            ? `<span class="inline-flex items-center gap-1.5 font-medium text-slate-800 dark:text-slate-200 text-xs">
-                                 <i class="fa-solid fa-building text-purple-500"></i>
-                                 ${s.unitName}
-                               </span>`
-                            : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400">
-                                 <i class="fa-solid fa-clock text-xs"></i>
-                                 Birim Atanmadı
-                               </span>`
-                        }
-                    </td>
-                    <td class="py-3 px-3 text-center">
-                        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-                            ${s.status || 'Aktif'}
-                        </span>
-                    </td>
-                    <td class="py-3 px-4 text-right">
-                        <button onclick="window.deanDashboard.openUnitModal('${s.studentId}')" 
-                            class="px-3 py-1.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/60 transition text-xs font-semibold inline-flex items-center gap-1.5 shadow-sm">
-                            <i class="fa-solid fa-building-circle-arrow-right"></i>
-                            <span>${hasUnit ? 'Birimi Değiştir' : 'Birim Ata'}</span>
-                        </button>
+                <tr>
+                    <td class="font-bold text-gray-900">${dept.name}</td>
+                    <td class="text-center font-semibold">${deptStudents.length}</td>
+                    <td class="text-center font-mono">${totalHours} Saat</td>
+                    <td class="text-right font-mono font-bold text-teal-800">${totalWage.toLocaleString('tr-TR')} ₺</td>
+                    <td class="text-center">
+                        ${deptRisks.length > 0 
+                            ? `<span class="badge-minimal badge-danger">${deptRisks.length} Öğrenci (Sınırda/Aştı)</span>` 
+                            : `<span class="badge-minimal badge-success">Sorun Yok</span>`}
                     </td>
                 </tr>
             `;
         }).join('');
     }
 
-    renderRisksTable(risks) {
-        const tbody = document.getElementById('dean-risks-table-body');
+    renderRiskTable(risks) {
+        const tbody = document.getElementById('dean-risk-table-body');
         if (!tbody) return;
 
-        if (risks.length === 0) {
+        if (!risks || risks.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="py-10 text-center text-slate-400">
-                        <i class="fa-solid fa-shield-heart text-2xl mb-2 text-emerald-500"></i>
-                        <p class="font-medium text-slate-600 dark:text-slate-300">Fakülte genelinde risk teşkil eden öğrenci bulunmamaktadır.</p>
+                    <td colspan="8" class="py-8 text-center text-gray-400">
+                        10 günlük yasal izin sınırını aşan veya risk taşıyan öğrenci bulunmamaktadır.
                     </td>
                 </tr>
             `;
@@ -848,78 +540,111 @@ class DeanDashboard {
         }
 
         tbody.innerHTML = risks.map(r => {
-            const isHighRisk = r.absentDays >= 3 || r.usedLeaveDays > 7;
+            const student = this.allStudents.find(s => s.studentId === r.studentId);
+            const isTerminated = student?.status === 'Terminated';
+            const hasExceeded = r.usedLeaveDays >= 10 || r.remainingLeaveDays <= 0;
+
+            let badgeClass = 'badge-warning';
+            let label = 'İzin Sınırına Yakın';
+            if (hasExceeded) {
+                badgeClass = 'badge-danger';
+                label = '10 Gün Sınırı Aşıldı';
+            }
 
             return `
-                <tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition">
-                    <td class="py-3.5 px-4">
-                        <div class="font-bold text-slate-900 dark:text-white">${r.fullName}</div>
-                        <div class="text-xs font-mono text-slate-400">${r.studentNumber}</div>
+                <tr>
+                    <td>
+                        <div class="font-bold text-gray-900">${r.fullName}</div>
+                        <div class="font-mono text-[10px] text-gray-400">${r.studentNumber}</div>
                     </td>
-                    <td class="py-3.5 px-3 text-xs text-slate-600 dark:text-slate-300">
-                        ${r.departmentName || '-'}
-                    </td>
-                    <td class="py-3.5 px-3 text-xs text-slate-600 dark:text-slate-300">
-                        ${r.advisorName || 'Atanmadı'}
-                    </td>
-                    <td class="py-3.5 px-3 text-center font-bold ${r.usedLeaveDays > 7 ? 'text-rose-600' : 'text-slate-700 dark:text-slate-300'}">
-                        ${r.usedLeaveDays} Gün
-                    </td>
-                    <td class="py-3.5 px-3 text-center font-bold ${r.absentDays >= 3 ? 'text-rose-600' : 'text-slate-700 dark:text-slate-300'}">
-                        ${r.absentDays} Gün
-                    </td>
-                    <td class="py-3.5 px-3 text-center">
-                        <span class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full ${isHighRisk ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300'}">
-                            <i class="fa-solid fa-flag text-xs"></i>
-                            ${isHighRisk ? 'Kritik Uyarı' : 'Takipte'}
-                        </span>
-                    </td>
-                    <td class="py-3.5 px-4 text-xs text-slate-500">
-                        ${r.riskDescription || (isHighRisk ? 'İzin/Devamsızlık sınırına ulaşıldı' : 'Sınır eşiğinde')}
+                    <td>${r.departmentName || '-'}</td>
+                    <td>${r.advisorName || 'Atanmadı'}</td>
+                    <td class="text-center font-bold text-rose-700">${r.usedLeaveDays} Gün</td>
+                    <td class="text-center font-bold">${r.remainingLeaveDays} Gün</td>
+                    <td class="text-center font-bold font-mono">${r.totalAbsentDays || 0} Gün</td>
+                    <td><span class="badge-minimal ${badgeClass}">${label}</span></td>
+                    <td class="text-right">
+                        ${isTerminated 
+                            ? `<span class="badge-minimal badge-neutral">İlişiği Kesilmiş</span>` 
+                            : `<button onclick="window.deanDashboard.openTerminateModal('${r.studentId}', '${r.fullName}')" 
+                                       class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[11px] font-semibold transition">
+                                   <i class="fa-solid fa-user-slash mr-1"></i>İŞKUR İlişiğini Kes
+                               </button>`}
                     </td>
                 </tr>
             `;
         }).join('');
     }
 
-    openUnitModal(studentId) {
-        const student = this.allStudents.find(s => s.studentId === studentId);
-        if (!student) return;
+    renderPayrollTable(data) {
+        const tbody = document.getElementById('dean-payroll-table-body');
+        if (!tbody) return;
 
-        this.selectedStudent = student;
-        document.getElementById('assign-unit-student-id').value = student.studentId;
-        document.getElementById('assign-unit-student-name').textContent = `${student.fullName} (${student.studentNumber})`;
-        document.getElementById('assign-unit-select').value = student.unitId || '';
-        document.getElementById('assign-unit-note').value = '';
-
-        document.getElementById('assign-unit-modal')?.classList.remove('hidden');
-    }
-
-    async handleAssignUnit() {
-        const studentId = document.getElementById('assign-unit-student-id').value;
-        const unitId = document.getElementById('assign-unit-select').value;
-        const note = document.getElementById('assign-unit-note').value;
-
-        if (!unitId) {
-            AppToast.warning("Lütfen görev birimi seçiniz.");
+        if (!data || data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="9" class="py-8 text-center text-gray-400">Puantaj kaydı bulunamadı.</td></tr>`;
             return;
         }
 
-        const btn = document.getElementById('submit-assign-unit-btn');
-        btn.disabled = true;
-        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Kaydediliyor...</span>`;
+        tbody.innerHTML = data.map(item => {
+            const hours = item.totalHoursWorked || 0;
+            const salary = hours * this.hourlyWage;
+
+            return `
+                <tr>
+                    <td class="font-mono font-medium">${item.studentNumber || '-'}</td>
+                    <td class="font-semibold text-gray-900">${item.fullName || '-'}</td>
+                    <td class="font-mono text-gray-500">${item.tcNo || 'KVKK Gizli'}</td>
+                    <td>${item.departmentName || '-'}</td>
+                    <td>${item.advisorName || 'Atanmadı'}</td>
+                    <td class="text-center font-bold">${item.actualDaysCount || 0}</td>
+                    <td class="text-center font-mono font-bold text-teal-800">${hours}</td>
+                    <td class="text-right font-black font-mono">${salary.toLocaleString('tr-TR')} ₺</td>
+                    <td class="font-mono text-[10px] text-gray-500">${item.iban || 'KVKK Gizli'}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    openTerminateModal(studentId, studentName) {
+        document.getElementById('dean-terminate-student-id').value = studentId;
+        document.getElementById('dean-terminate-student-name').textContent = studentName;
+        document.getElementById('dean-terminate-reason').value = '10 günlük yasal izin sınırının aşılması ve devamsızlık';
+        document.getElementById('dean-terminate-modal').classList.remove('hidden');
+    }
+
+    async executeTermination() {
+        const studentId = document.getElementById('dean-terminate-student-id').value;
+        const reason = document.getElementById('dean-terminate-reason').value.trim();
 
         try {
-            await ApiClient.Academic.assignUnit(studentId, unitId, note);
-            AppToast.success("Birim görevlendirmesi başarıyla kaydedildi.");
-            document.getElementById('assign-unit-modal')?.classList.add('hidden');
-            await this.loadInitialData();
-        } catch (error) {
-            console.error("Birim atama hatası:", error);
-            AppToast.error("Görevlendirme kaydedilemedi: " + error.message);
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = `<i class="fa-solid fa-check text-xs"></i> <span>Görevi Kaydet</span>`;
+            await ApiClient.Academic.terminateStudent(studentId, reason);
+            AppToast.success("Öğrencinin İŞKUR ilişiği resmi olarak kesildi.");
+            document.getElementById('dean-terminate-modal').classList.add('hidden');
+            await this.loadAllStudents();
+            await this.loadRiskWarnings();
+        } catch (err) {
+            console.error("İlişik kesme hatası:", err);
+            AppToast.error(err.message || "İlişik kesme işlemi başarısız.");
+        }
+    }
+
+    async exportExcel() {
+        try {
+            await ApiClient.Report.downloadExcel(this.currentYear, this.currentMonth, this.selectedDepartmentId || null);
+            AppToast.success("Excel puantaj raporu başarıyla indirildi.");
+        } catch (err) {
+            console.error("Excel indirme hatası:", err);
+            AppToast.error("Rapor indirilemedi.");
+        }
+    }
+
+    async exportCsv() {
+        try {
+            await ApiClient.Report.downloadCsv(this.currentYear, this.currentMonth, this.selectedDepartmentId || null);
+            AppToast.success("CSV puantaj raporu başarıyla indirildi.");
+        } catch (err) {
+            console.error("CSV indirme hatası:", err);
+            AppToast.error("Rapor indirilemedi.");
         }
     }
 }

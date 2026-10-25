@@ -187,6 +187,12 @@ class AuthManager {
                 passwordEl.value = 'Baskan123!';
                 AppToast.info("Bölüm Başkanı demo hesap bilgileri dolduruldu.");
                 break;
+            case 'fakultesekreteri':
+            case 'sekreter':
+                identifierEl.value = 'sekreter@tf.edu.tr';
+                passwordEl.value = 'Sekreter123!';
+                AppToast.info("Fakülte Sekreteri (İŞKUR Merkezi) demo hesap bilgileri dolduruldu.");
+                break;
             case 'dekanlik':
                 identifierEl.value = 'dekanlik@tf.edu.tr';
                 passwordEl.value = 'Admin123!';

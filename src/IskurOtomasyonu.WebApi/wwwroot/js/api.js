@@ -275,6 +275,18 @@ class ApiClient {
             method: 'POST',
             body: JSON.stringify({ studentId, status: parseInt(status) })
         }),
+        getAnnouncements: (departmentId = null) => {
+            const params = departmentId ? `?departmentId=${departmentId}` : '';
+            return ApiClient.request(`/api/academic/announcements${params}`, { method: 'GET' });
+        },
+        createAnnouncement: (data) => ApiClient.request('/api/academic/announcements', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+        terminateStudent: (studentId, reason = null) => ApiClient.request('/api/academic/terminate-student', {
+            method: 'POST',
+            body: JSON.stringify({ studentId, reason })
+        }),
         getMyProfile: () => ApiClient.request('/api/academic/my-profile', { method: 'GET' })
     };
 }

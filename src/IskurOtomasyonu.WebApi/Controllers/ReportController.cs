@@ -7,7 +7,9 @@ using IskurOtomasyonu.Domain.Enums;
 
 namespace IskurOtomasyonu.WebApi.Controllers;
 
-[Authorize(Roles = $"{AppRoles.Dekanlik},{AppRoles.BolumBaskani}")]
+[Route("api/reports")]
+[Route("api/report")]
+[Authorize(Roles = $"{AppRoles.Dekanlik},{AppRoles.BolumBaskani},{AppRoles.FakulteSekreteri}")]
 public class ReportController : ApiControllerBase
 {
     private readonly IReportService _reportService;

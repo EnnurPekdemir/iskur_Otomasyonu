@@ -1,0 +1,15 @@
+{
+  "name": "iskur-otomasyonu",
+  "version": "1.0.0",
+  "description": "İŞKUR Kısmi Zamanlı Öğrenci Çalışma ve Yönetim Sistemi",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "iskur",
+    "otomasyon"
+  ],
+  "author": "",
+  "license": "ISC"
+}

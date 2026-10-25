@@ -55,6 +55,7 @@ public class ApplicationDbContext : IdentityDbContext<
     // İş Akışı ve Görev Değerlendirme Varlıkları
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<StudentTask> StudentTasks => Set<StudentTask>();
+    public DbSet<Announcement> Announcements => Set<Announcement>();
 
     // Sistem Yapılandırması
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();

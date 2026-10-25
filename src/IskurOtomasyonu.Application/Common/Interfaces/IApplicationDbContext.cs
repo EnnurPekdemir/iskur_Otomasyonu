@@ -26,6 +26,7 @@ public interface IApplicationDbContext
     DbSet<Attendance> Attendances { get; }
     DbSet<LeaveRequest> LeaveRequests { get; }
     DbSet<StudentTask> StudentTasks { get; }
+    DbSet<Announcement> Announcements { get; }
     DbSet<SystemSetting> SystemSettings { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

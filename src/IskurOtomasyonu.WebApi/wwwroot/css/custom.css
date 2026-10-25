@@ -1,98 +1,217 @@
-/* Teknoloji Fakültesi İŞKUR Otomasyonu - Özel Tasarım Stilleri */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+html {
+    font-size: 13px; /* Kompakt ve zarif tipografi ölçeği */
+    -webkit-text-size-adjust: 100%;
+}
 
 :root {
-    --faculty-navy: #1B365D;
-    --faculty-blue: #0284C7;
-    --faculty-light-blue: #E0F2FE;
-    --faculty-accent: #F59E0B;
+    --bg-page: #FFFFFF;
+    --card-bg: #F9FAFB;
+    --card-bg-subtle: #F3F4F6;
+    --card-border: #E5E7EB;
+    --card-border-focus: #D1D5DB;
+    
+    /* Selçuk Üniversitesi Kurumsal Renkleri */
+    --selcuk-primary: #006982;
+    --selcuk-dark: #004D61;
+    --selcuk-light: #E6F3F6;
+    
+    --text-primary: #111827;
+    --text-secondary: #4B5563;
+    --text-muted: #6B7280;
+    --text-light: #9CA3AF;
 }
 
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-page) !important;
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.015em;
+    font-size: 0.925rem;
+    line-height: 1.45;
 }
 
-h1, h2, h3, h4, .brand-font {
-    font-family: 'Outfit', sans-serif;
+/* Başlık ve Metin Boyutlarının Sadeleştirilmesi */
+h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+h3 { font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; }
+h4 { font-size: 0.85rem; font-weight: 600; }
+
+input, select, textarea {
+    font-size: 0.85rem !important;
 }
 
-/* Özel Scrollbar */
+/* Minimalist Kart ve Kutu Stilleri */
+.bg-page {
+    background-color: #FFFFFF !important;
+}
+
+.box-card {
+    background-color: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-radius: 0.75rem;
+    transition: all 0.15s ease-in-out;
+}
+
+.box-card:hover {
+    border-color: #D1D5DB;
+}
+
+.box-card-subtle {
+    background-color: #F3F4F6;
+    border: 1px solid #E5E7EB;
+    border-radius: 0.625rem;
+}
+
+/* Minimal Butonlar */
+.btn-primary {
+    background-color: #006982;
+    color: #FFFFFF;
+    font-weight: 600;
+    font-size: 0.775rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: all 0.15s ease;
+}
+
+.btn-primary:hover {
+    background-color: #004D61;
+}
+
+.btn-secondary {
+    background-color: #FFFFFF;
+    color: #374151;
+    border: 1px solid #E5E7EB;
+    font-weight: 500;
+    font-size: 0.775rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: all 0.15s ease;
+}
+
+.btn-secondary:hover {
+    background-color: #F9FAFB;
+    border-color: #D1D5DB;
+}
+
+/* Tablolar - Kompakt ve Düzenli */
+.table-minimal {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.table-minimal th {
+    background-color: #F9FAFB;
+    color: #4B5563;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #E5E7EB;
+}
+
+.table-minimal td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #F3F4F6;
+    font-size: 0.775rem;
+    color: #1F2937;
+}
+
+.table-minimal tr:last-child td {
+    border-bottom: none;
+}
+
+.table-minimal tr:hover td {
+    background-color: #F9FAFB;
+}
+
+/* Rozetler */
+.badge-minimal {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+}
+
+.badge-success {
+    background-color: #ECFDF5;
+    color: #047857;
+    border: 1px solid #A7F3D0;
+}
+
+.badge-warning {
+    background-color: #FFFBEB;
+    color: #B45309;
+    border: 1px solid #FDE68A;
+}
+
+.badge-danger {
+    background-color: #FEF2F2;
+    color: #B91C1C;
+    border: 1px solid #FECACA;
+}
+
+.badge-neutral {
+    background-color: #F3F4F6;
+    color: #374151;
+    border: 1px solid #E5E7EB;
+}
+
+.badge-info {
+    background-color: #E6F3F6;
+    color: #006982;
+    border: 1px solid #B2DEE6;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: #f1f5f9;
+    background: #FFFFFF;
 }
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
+    background: #E5E7EB;
+    border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
-
-/* Glassmorphism & Kart Gölgeleri */
-.glass-card {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(226, 232, 240, 0.8);
-}
-
-.subtle-shadow {
-    box-shadow: 0 4px 20px -2px rgba(27, 54, 93, 0.06);
-}
-
-.card-hover {
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.card-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 28px -4px rgba(27, 54, 93, 0.12);
-}
-
-/* 30 Saniyelik Dinamik Geri Sayım Çemberi (Progress Ring) */
-.progress-ring__circle {
-    transition: stroke-dashoffset 0.35s linear;
-    transform: rotate(-90deg);
-    transform-origin: 50% 50%;
-}
-
-/* Takvim Hücreleri */
-.calendar-day-cell {
-    min-height: 80px;
-    transition: all 0.15s ease-in-out;
-}
-.calendar-day-cell:hover:not(.disabled) {
-    transform: scale(1.02);
+    background: #D1D5DB;
 }
 
 /* Animasyonlar */
-@keyframes pulse-fast {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+@keyframes fadeInFast {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-pulse-fast {
-    animation: pulse-fast 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+.animate-fadeIn {
+    animation: fadeInFast 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Toast Bildirimleri */
-.toast-enter {
-    animation: slideInRight 0.3s ease-out forwards;
-}
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+@keyframes scaleInFast {
+    from { opacity: 0; transform: scale(0.97); }
+    to { opacity: 1; transform: scale(1); }
 }
 
-/* Mobil Dinamik QR Tarayıcı Vizör ve Lazer Animasyonu */
+.animate-scaleIn {
+    animation: scaleInFast 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* QR Lazer Çizgisi */
 @keyframes qr-laser {
     0% { top: 5%; opacity: 0.8; }
     50% { top: 90%; opacity: 1; }
@@ -104,10 +223,9 @@ h1, h2, h3, h4, .brand-font {
     left: 4%;
     right: 4%;
     height: 3px;
-    background: linear-gradient(90deg, rgba(16, 185, 129, 0) 0%, rgba(16, 185, 129, 1) 50%, rgba(16, 185, 129, 0) 100%);
-    box-shadow: 0 0 14px rgba(16, 185, 129, 0.9), 0 0 28px rgba(16, 185, 129, 0.5);
+    background: linear-gradient(90deg, rgba(0, 105, 130, 0) 0%, rgba(0, 105, 130, 1) 50%, rgba(0, 105, 130, 0) 100%);
+    box-shadow: 0 0 10px rgba(0, 105, 130, 0.8);
     animation: qr-laser 2s ease-in-out infinite;
     pointer-events: none;
     z-index: 20;
 }
-

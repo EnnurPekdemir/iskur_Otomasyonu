@@ -8,7 +8,8 @@ public enum UserRoleType
     Dekanlik = 1,
     BolumBaskani = 2,
     Danisman = 3,
-    Ogrenci = 4
+    Ogrenci = 4,
+    FakulteSekreteri = 5
 }
 
 /// <summary>
@@ -20,12 +21,14 @@ public static class AppRoles
     public const string BolumBaskani = "BolumBaskani";
     public const string Danisman = "Danisman";
     public const string Ogrenci = "Ogrenci";
+    public const string FakulteSekreteri = "FakulteSekreteri";
 
     public static readonly IReadOnlyList<string> All = new[]
     {
         Dekanlik,
         BolumBaskani,
         Danisman,
-        Ogrenci
+        Ogrenci,
+        FakulteSekreteri
     };
 }

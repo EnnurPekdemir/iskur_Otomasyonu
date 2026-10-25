@@ -21,7 +21,7 @@ public class AttendanceController : ApiControllerBase
     /// Yetkili (Danışman/Sekreterlik) için 30 saniye geçerlilik süresine sahip dinamik QR oturumu oluşturur.
     /// </summary>
     [HttpPost("qr-session")]
-    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.Dekanlik},{AppRoles.BolumBaskani}")]
+    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.Dekanlik},{AppRoles.BolumBaskani},{AppRoles.FakulteSekreteri}")]
     [ProducesResponseType(typeof(ApiResponse<QrSessionResponseDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<QrSessionResponseDto>>> CreateQrSession(
         [FromBody] CreateQrSessionDto request, 
@@ -68,7 +68,7 @@ public class AttendanceController : ApiControllerBase
     /// QR okutamayan durumlar için yetkili tarafından manuel devam onayı verir.
     /// </summary>
     [HttpPost("manual")]
-    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.Dekanlik}")]
+    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.Dekanlik},{AppRoles.FakulteSekreteri}")]
     [ProducesResponseType(typeof(ApiResponse<AttendanceResponseDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<AttendanceResponseDto>>> ManualAttendance(
         [FromBody] ManualAttendanceDto request, 
@@ -97,7 +97,7 @@ public class AttendanceController : ApiControllerBase
     /// Bugünün gerçekleşen tüm devam kayıtlarını listeler (Birim filtresi destekler).
     /// </summary>
     [HttpGet("today")]
-    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.Dekanlik},{AppRoles.BolumBaskani}")]
+    [Authorize(Roles = $"{AppRoles.Danisman},{AppRoles.Dekanlik},{AppRoles.BolumBaskani},{AppRoles.FakulteSekreteri}")]
     [ProducesResponseType(typeof(ApiResponse<List<AttendanceResponseDto>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<List<AttendanceResponseDto>>>> GetTodayAttendances(
         [FromQuery] Guid? unitId, 
